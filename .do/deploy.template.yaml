@@ -1,0 +1,9 @@
+
+spec:
+  name: creature-team
+  static_sites:
+  - environment_slug: html
+    git:
+      branch: main
+      repo_clone_url: https://github.com/QuinnRadford/creature-team.git
+    name: creature-team
