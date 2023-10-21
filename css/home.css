@@ -10,11 +10,11 @@ body {
   box-sizing: border-box;
   overflow: hidden;
   color: white;
-  background-image: url("../img/the_skrunk1.jpg");
   background-position: center center;
   background-size: contain;
   background-color: black;
   background-repeat: no-repeat;
+  background-image: url("../img/the_skrunk1.jpg");
 }
 
 .content {
