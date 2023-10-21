@@ -9,10 +9,22 @@ body{
     box-sizing: border-box;
     overflow:hidden;
     color:white;
-
-    background-image: url('../img/the_skrunk1.jpg');
     background-position: center center;
     background-size: contain;
     background-color: black;
     background-repeat: no-repeat;
+}
+
+.content{
+    height:100%;
+    width:100%;
+    position: relative;
+    canvas{
+        position: absolute;
+        left:0;
+        right:0;
+        height:100%;
+        width:100%;
+        outline:solid white 1px;
+    }
 }

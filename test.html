@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Creature Team</title>
+        <script src="js/jquery-3.6.0.min.js"></script>
+        <link rel="stylesheet" href="css/home.css"/>
+    </head>
+    <body>
+        <div class="content">
+            <canvas id="screen"></canvas>
+        </div>
+    </body>
+
+    <script>
+        var $container, canvasHeight, canvasWidth,canvasBoundX,canvasBoundY,isMobileDevice;
+        var screenCanvas = document.getElementById('screen');
+        var screenCtx = this.screenCanvas.getContext('2d');
+
+    $(document).ready(function(){
+        $container = $('.content');
+
+        resizeCanvas();
+        if(isTouchDevice()){
+            isMobileDevice = true;
+        }
+
+        if(isMobileDevice){
+            $('body').css('padding',0);
+            resizeCanvas();
+        }
+        
+
+        class Grass{
+            ctx;
+            x;
+            y;
+            height = 30;
+            width = 60;
+            canvas;
+
+            constructor(canvas, ctx, x, y){
+                this.x = x;
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.y = y;
+            }
+
+            draw(){
+                this.ctx.save();
+                this.ctx.fill
+                this.ctx.beginPath();
+                this.ctx.rect(this.x, this.y, this.width, this.height);
+                this.ctx.fillStyle = "white";
+                this.ctx.fill();
+                this.ctx.restore();
+            }
+        }
+
+        class Creature{
+            ctx;
+            x;
+            y;
+            height = 60;
+            width = 80;
+            canvas;
+            moveX;
+            moveY;
+            moveD;
+            targetX;
+            targetY;
+            speed = 100;
+
+            wanderLength = 100;
+
+            constructor(canvas, ctx, x, y){
+                this.x = x;
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.y = y;
+            }
+
+            draw(){
+                this.ctx.save();
+                this.ctx.fill
+                this.ctx.beginPath();
+                this.ctx.rect(this.x, this.y, this.width, this.height);
+                this.ctx.strokeStyle = "red";
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
+            wander(){
+                var deltaX = this.targetX - this.x;
+                var deltaY = this.targetY - this.y;
+
+                //if it's close just get there
+                if(Math.abs(deltaY) < this.wanderLength && Math.abs(deltaX) < this.wanderLength){
+                    this.moveX = this.targetX;
+                    this.moveY = this.targetY;
+                    var direction = Math.atan(deltaY/deltaX);
+                    this.moveD = direction;
+                }else{
+                    var directionJitter = (Math.random() * 0.5) - 0.25;
+                    var direction = Math.atan(deltaY/deltaX);
+                    
+                    this.moveD = direction + directionJitter; 
+                    var thisWanderLength = ((this.wanderLength/2) * Math.random()) + (this.wanderLength/2);
+
+                    //wander target
+                    this.moveX = this.x + Math.round(Math.cos(this.moveD) * thisWanderLength); 
+                    this.moveY = this.y + Math.round(Math.sin(this.moveD) * thisWanderLength);
+                }
+
+
+                //dev
+                this.ctx.save();
+                this.ctx.fill
+                this.ctx.beginPath();
+                this.ctx.rect(this.moveX-5, this.moveY-5, 10, 10);
+                this.ctx.fillStyle = "blue";
+                this.ctx.fill();
+                this.ctx.restore();
+
+
+            }
+            chooseTarget(grassList){
+                var rand = Math.random();
+                var grassIndex = Math.floor(rand * grassList.length);
+                this.targetX = grassList[grassIndex].x;
+                this.targetY = grassList[grassIndex].y;
+
+                //dev
+                this.ctx.save();
+                this.ctx.fill
+                this.ctx.beginPath();
+                this.ctx.rect(this.targetX-5, this.targetY-5, 10, 10);
+                this.ctx.fillStyle = "orange";
+                this.ctx.fill();
+                this.ctx.restore();
+            }
+        }
+
+        function resizeCanvas(){
+            if($container.width() <= 480){
+                $container.css({
+                    height:"150%",
+                    width:"150%",
+                    transform:"scale(0.6666) translate(-25%, -25%)"
+                });
+            }else{
+                $container.css({
+                    height:"100%",
+                    width:"100%",
+                    transform:""
+                });
+            }
+            canvasHeight = $container.height();
+            canvasWidth = $container.width();
+            canvasBoundX = canvasWidth;
+            canvasBoundY = canvasHeight;
+
+
+            screenCanvas.height = canvasHeight;
+            screenCanvas.width = canvasWidth;
+        }
+
+        //initialize grass
+        var grassCount = 20;
+        var grassList = [];
+        for(var i = 0; i < grassCount; i++){
+            var rand1 = Math.random();
+            var rand2 = Math.random();
+            grassList.push(new Grass(screenCanvas, screenCtx, Math.floor(canvasBoundX * rand1),Math.floor(canvasBoundY * rand2)));
+        }
+        //initial grass draw
+        grassList.map(function(x){x.draw();});
+
+        //initialize creature
+        var creature = new Creature(screenCanvas, screenCtx, Math.round(canvasBoundX/2), Math.round(canvasBoundY/2));
+        creature.draw();
+
+        //creature player
+        function moveCreature(frameTime){
+            var drawStart = Date.now();
+            deltaTime = (drawStart - frameTime)/1000;
+
+            if( Math.abs(creature.x - creature.moveX) <= 1 && Math.abs(creature.y - creature.moveY) <= 1){
+                creature.wander();
+            }
+
+            //screenCtx.clearRect(0, 0, screenCtx.canvas.clientWidth, screenCtx.canvas.clientHeight);
+
+            //go one step towards destination
+            var xPart = Math.cos(creature.moveD) * creature.speed * deltaTime;
+            var yPart = Math.sin(creature.moveD) * creature.speed * deltaTime;
+            creature.x = creature.x + xPart;
+            creature.y = creature.y + yPart;
+
+            var creatureBottom = creature.y + creature.height;
+
+            //figure out draw order
+            var foreground = [];
+            var background = [];
+            for(var i = 0; i< grassList.length; i++){
+                if((grassList[i].y + grassList.height) < creatureBottom){
+                    background.push(grassList[i]);
+                }else{
+                    foreground.push(grassList[i]);
+                }
+            }
+
+            //draw stuff
+            background.map(function(x){x.draw();});
+            creature.draw();
+            foreground.map(function(y){y.draw();});
+
+            //go to next grass after a bit
+            if( Math.abs(creature.x - creature.targetX) <= 5 && Math.abs(creature.y - creature.targetY) <= 5){
+                window.setTimeout(beginCreature, 3000);
+            }else{
+                window.requestAnimationFrame(function(){
+                    moveCreature(drawStart);
+                });
+            }
+
+            
+        }
+
+
+        function beginCreature(){
+            creature.chooseTarget(grassList);
+            creature.wander();
+            window.requestAnimationFrame(function(){
+                moveCreature(Date.now());
+            });
+        }
+
+        beginCreature();
+        
+
+        function isTouchDevice() {
+            return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+        }
+    });
+    </script>
+</html>
