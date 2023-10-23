@@ -9,7 +9,322 @@
         <link rel="stylesheet" href="css/home.css"/>
     </head>
     <body>
-
-        Creatures.
+        <style>
+            body{
+                background-image: url('img/grass-flower-bg.jpg');
+                background-size: 200px;
+                background-repeat: repeat;
+            }
+        </style>
+        <div class="content">
+            <canvas id="screen"></canvas>
+        </div>
     </body>
+
+    <script>
+        var $container, canvasHeight, canvasWidth,canvasBoundX,canvasBoundY,isMobileDevice, creature;
+        var screenCanvas = document.getElementById('screen');
+        var screenCtx = this.screenCanvas.getContext('2d');
+
+    $(document).ready(function(){
+        $container = $('.content');
+
+        resizeCanvas();
+        if(isTouchDevice()){
+            isMobileDevice = true;
+        }
+
+        if(isMobileDevice){
+            $('body').css('padding',0);
+            resizeCanvas();
+        }
+        
+
+        class Grass{
+            ctx;
+            x;
+            y;
+            height = 60;
+            width = 60;
+            canvas;
+            img;
+
+            constructor(canvas, ctx, x, y, img){
+                this.x = x;
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.y = y;
+                this.img = img;
+            }
+
+            draw(){
+                this.ctx.save();
+                this.ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+                this.ctx.restore();
+            }
+        }
+        var creatureImg = new Image();
+        var creatureEating = new Image();
+        var grassImg = new Image();
+
+        const loadImage = (url, img) => new Promise((resolve, reject) => {
+            img.addEventListener('load', () => resolve(img));
+            img.addEventListener('error', (err) => reject(err));
+            img.src = url;
+        });
+
+        
+
+        class Creature{
+            ctx;
+            x;
+            y;
+            height = 120;
+            width = 120;
+            canvas;
+            moveX;
+            moveY;
+            moveD;
+            targetX;
+            targetY;
+            speed = 80;
+            img;
+            invert = false;
+            img2;
+            moving = false;
+            timeout = Date.now();
+
+            wanderLength = 100;
+
+            constructor(canvas, ctx, x, y, img, img2){
+                this.x = x;
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.y = y;
+                this.img = img;
+                this.img2 = img2;
+            }
+
+            draw(){
+                this.ctx.save();
+
+                if(this.moving){
+                    var thisImage = this.img;
+                }else{
+                    var thisImage = this.img2;
+                }
+                
+                if(this.invert){
+                    this.ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                    this.ctx.scale(-1, 1);
+                    this.ctx.drawImage(thisImage, -this.width/2, -this.height/2, this.width, this.height);
+                }else{
+                    this.ctx.drawImage(thisImage, this.x, this.y, this.width, this.height);
+                }
+                this.ctx.restore();
+            }
+            wander(){
+                var deltaX = this.targetX - this.x;
+                var deltaY = this.targetY - this.y;
+
+                if(deltaX < 0){
+                    this.invert = true;
+                }else{
+                    this.invert = false;
+                }
+
+                //if it's close just get there
+                if(Math.abs(deltaY) < this.wanderLength && Math.abs(deltaX) < this.wanderLength){
+                    this.moveX = this.targetX;
+                    this.moveY = this.targetY;
+                    var direction = Math.atan2(deltaY,deltaX);
+                    this.moveD = direction;
+                }else{
+                    var directionJitter = (Math.random() * 0.8) - 0.4;
+                    var direction = Math.atan2(deltaY,deltaX);
+                    direction = direction + directionJitter; 
+                    this.moveD = direction;
+                    var thisWanderLength = ((this.wanderLength/2) * Math.random()) + (this.wanderLength/2);
+
+                    //wander target
+                    this.moveX = this.x + Math.round(Math.cos(this.moveD) * thisWanderLength); 
+                    this.moveY = this.y + Math.round(Math.sin(this.moveD) * thisWanderLength);
+                }
+
+
+            }
+            chooseTarget(grassList){
+                var rand = Math.random();
+                var grassIndex = Math.floor(rand * grassList.length);
+                this.targetX = grassList[grassIndex].x + (grassList[grassIndex].width/2);
+                this.targetY = grassList[grassIndex].y + grassList[grassIndex].height - this.height;
+
+            }
+        }
+
+        function resizeCanvas(){
+            if($container.width() <= 480){
+                $container.css({
+                    height:"150%",
+                    width:"150%",
+                    transform:"scale(0.6666) translate(-25%, -25%)"
+                });
+            }else{
+                $container.css({
+                    height:"100%",
+                    width:"100%",
+                    transform:""
+                });
+            }
+            canvasHeight = $container.height();
+            canvasWidth = $container.width();
+            canvasBoundX = canvasWidth - 60;
+            canvasBoundY = canvasHeight - 60;
+
+
+            screenCanvas.height = canvasHeight;
+            screenCanvas.width = canvasWidth;
+        }
+
+        //initialize grass
+        var grassCount = 100;
+        var grassList = [];
+
+        var creatureCount = 5;
+        var creatureList = [];
+
+
+        //creature player
+        function moveCreature(frameTime){
+            var drawStart = Date.now();
+            deltaTime = (drawStart - frameTime)/1000;
+            for(var i = 0; i < creatureList.length; i++){
+                if(creatureList[i].moving){
+                    if( Math.abs(creatureList[i].x - creatureList[i].moveX) <= 1 && Math.abs(creatureList[i].y - creatureList[i].moveY) <= 1){
+                        creatureList[i].wander();
+                    }
+
+                    if( Math.abs(creatureList[i].x - creatureList[i].targetX) <= 5 && Math.abs(creatureList[i].y - creatureList[i].targetY) <= 5){
+                        creatureList[i].moving = false;
+                        
+                        creatureList[i].timeout = Date.now() + 2000 + (Math.random()*5000);
+                    }
+
+                    screenCtx.clearRect(0, 0, screenCtx.canvas.clientWidth, screenCtx.canvas.clientHeight);
+
+                    //go one step towards destination
+                    var xPart = Math.cos(creatureList[i].moveD) * creatureList[i].speed * deltaTime;
+                    var yPart = Math.sin(creatureList[i].moveD) * creatureList[i].speed * deltaTime;
+                    creatureList[i].x = creatureList[i].x + xPart;
+                    creatureList[i].y = creatureList[i].y + yPart;
+                }
+            }
+
+            //figure out draw order
+            var drawList = [];
+            var creatureListKeys = [];
+
+            for(var i = 0; i< creatureList.length; i++){
+                creatureListKeys.push(i);
+            }
+
+            for(var i = 0; i< grassList.length; i++){
+                for(var ii = 0; ii < creatureListKeys.length; ii++){
+                    if(creatureListKeys[ii] !== false){
+                        if((grassList[i].y + grassList[i].height) > (creatureList[creatureListKeys[ii]].y + creatureList[creatureListKeys[ii]].height)){
+                            drawList.push(creatureList[creatureListKeys[ii]]);
+                            creatureListKeys[ii] = false;
+                        }
+                    }
+                }
+                drawList.push(grassList[i]);
+            }
+
+            //draw stuff
+            for(var i = 0; i < drawList.length; i++){
+                drawList[i].draw();
+            }
+
+            //go to next grass after a bit
+            for(var i = 0; i < creatureList.length; i++){
+                if(!creatureList[i].moving && creatureList[i].timeout < Date.now()){
+                    creatureList[i].moving = true;
+                    creatureList[i].chooseTarget(grassList);
+                    creatureList[i].wander();
+                }
+            }
+            window.requestAnimationFrame(function(){
+                moveCreature(drawStart);
+            });
+
+
+            
+        }
+
+        loadImage("img/deer-eating.png", creatureEating)
+        .then(function(img){
+            loadGrass();
+        })
+        .catch(err => console.error(err));
+
+        function loadGrass(){
+            loadImage("img/grass.svg", grassImg)
+            .then(function(img){
+                //initialize creature
+                for(var i = 0; i < grassCount; i++){
+                    var rand1 = Math.random();
+                    var rand2 = Math.random();
+                    grassList.push(new Grass(screenCanvas, screenCtx, Math.floor((canvasBoundX * rand1)),Math.floor((canvasBoundY * rand2)), img));
+                }
+
+                grassList.sort(function(a,b){
+                    if(a.y < b.y){
+                        return -1;
+                    }else if(a.y > b.y){
+                        return 1;
+                    }else{
+                        return 0;
+                    }
+                })
+                //initial grass draw
+                grassList.map(function(x){x.draw();});
+                loadCreature();
+            })
+            .catch(err => console.error(err));
+        }
+
+        function loadCreature(){
+            loadImage("img/deer.png", creatureImg)
+            .then(function(img){
+
+                for(var i = 0; i < creatureCount; i++){
+                    var rand1 = Math.random();
+                    var rand2 = Math.random();
+                    creatureList.push(new Creature(screenCanvas, screenCtx, Math.floor((canvasBoundX * rand1)),Math.floor((canvasBoundY * rand2)), img, creatureEating));
+                    creatureList[i].draw();
+                }
+                beginCreature();
+            })
+            .catch(err => console.error(err));
+        }
+
+        function beginCreature(){
+            for(var i = 0; i < creatureList.length; i++){
+                creatureList[i].moving = true;
+                creatureList[i].chooseTarget(grassList);
+                creatureList[i].wander();
+            }
+            window.requestAnimationFrame(function(){
+                moveCreature(Date.now());
+            });
+        }
+
+        
+        
+
+        function isTouchDevice() {
+            return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+        }
+    });
+    </script>
 </html>
