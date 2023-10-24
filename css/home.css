@@ -10,14 +10,21 @@ body {
   box-sizing: border-box;
   overflow: hidden;
   color: white;
-  background-color: black;
+  background-position: center;
   background-image: url("../img/grass-flower-bg.jpg");
   background-size: 200px;
   background-repeat: repeat;
 }
 
+canvas {
+  background: transparent;
+}
+
 body.shrimp-mode {
+  background-position: center;
   background-image: url("../img/sea-floor.jpg");
+  background-size: 256px;
+  background-repeat: repeat;
 }
 
 .content {

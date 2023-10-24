@@ -25,8 +25,9 @@
         var urlParams = new URLSearchParams(window.location.search);
         var shrimpMode = urlParams.get('shrimp');
 
-        $('body').addClass('shrimp-mode');
-
+        if(shrimpMode){
+            $('body').addClass('shrimp-mode');
+        }
         resizeCanvas();
         if(isTouchDevice()){
             isMobileDevice = true;
