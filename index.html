@@ -204,13 +204,15 @@
         }
 
         //initialize grass
-        var grassCount = 100;
+        var grassCount = Math.round((canvasHeight*canvasWidth)/15000); 
+
+
         var grassList = [];
 
         if(shrimpMode){
-            var creatureCount = 10;
+            var creatureCount = Math.max(Math.round(grassCount/10), 5);
         }else{
-            var creatureCount = 5;
+            var creatureCount = Math.max(Math.round(grassCount/20), 3);
         }
         
         var creatureList = [];
