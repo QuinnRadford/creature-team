@@ -9,13 +9,6 @@
         <link rel="stylesheet" href="css/home.css"/>
     </head>
     <body>
-        <style>
-            body{
-                background-image: url('img/grass-flower-bg.jpg');
-                background-size: 200px;
-                background-repeat: repeat;
-            }
-        </style>
         <div class="content">
             <canvas id="screen"></canvas>
         </div>
@@ -29,6 +22,11 @@
     $(document).ready(function(){
         $container = $('.content');
 
+        var urlParams = new URLSearchParams(window.location.search);
+        var shrimpMode = urlParams.get('shrimp');
+
+        $('body').addClass('shrimp-mode');
+
         resizeCanvas();
         if(isTouchDevice()){
             isMobileDevice = true;
@@ -38,6 +36,7 @@
             $('body').css('padding',0);
             resizeCanvas();
         }
+        
         
 
         class Grass{
@@ -55,6 +54,11 @@
                 this.ctx = ctx;
                 this.y = y;
                 this.img = img;
+
+                if(shrimpMode){
+                    this.height = 120;
+                    this.width = 120;
+                }
             }
 
             draw(){
@@ -93,6 +97,7 @@
             img2;
             moving = false;
             timeout = Date.now();
+            invertColour = false;
 
             wanderLength = 100;
 
@@ -103,6 +108,14 @@
                 this.y = y;
                 this.img = img;
                 this.img2 = img2;
+                
+                if(shrimpMode){
+                    this.height = 60;
+                    this.width = 60;
+                    if(Math.random() > 0.5){
+                        this.invertColour = true;
+                    }
+                }
             }
 
             draw(){
@@ -112,6 +125,10 @@
                     var thisImage = this.img;
                 }else{
                     var thisImage = this.img2;
+                }
+
+                if(shrimpMode && this.invertColour){
+                    this.ctx.filter = 'invert(1)';
                 }
                 
                 if(this.invert){
@@ -190,7 +207,12 @@
         var grassCount = 100;
         var grassList = [];
 
-        var creatureCount = 5;
+        if(shrimpMode){
+            var creatureCount = 10;
+        }else{
+            var creatureCount = 5;
+        }
+        
         var creatureList = [];
 
 
@@ -261,14 +283,14 @@
             
         }
 
-        loadImage("img/deer-eating.png", creatureEating)
+        loadImage(shrimpMode ? "img/shrimp.svg" : "img/deer-eating.png", creatureEating)
         .then(function(img){
             loadGrass();
         })
         .catch(err => console.error(err));
 
         function loadGrass(){
-            loadImage("img/grass.svg", grassImg)
+            loadImage(shrimpMode ? "img/seaweed.png" : "img/grass.svg", grassImg)
             .then(function(img){
                 //initialize creature
                 for(var i = 0; i < grassCount; i++){
@@ -294,7 +316,7 @@
         }
 
         function loadCreature(){
-            loadImage("img/deer.png", creatureImg)
+            loadImage(shrimpMode ? "img/shrimp.svg" : "img/deer-eating.png", creatureImg)
             .then(function(img){
 
                 for(var i = 0; i < creatureCount; i++){

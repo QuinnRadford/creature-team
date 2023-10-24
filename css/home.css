@@ -10,11 +10,14 @@ body {
   box-sizing: border-box;
   overflow: hidden;
   color: white;
-  background-position: center center;
-  background-size: contain;
   background-color: black;
-  background-repeat: no-repeat;
-  background-image: url("../img/the_skrunk1.jpg");
+  background-image: url("../img/grass-flower-bg.jpg");
+  background-size: 200px;
+  background-repeat: repeat;
+}
+
+body.shrimp-mode {
+  background-image: url("../img/sea-floor.jpg");
 }
 
 .content {
