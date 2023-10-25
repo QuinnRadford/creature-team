@@ -236,7 +236,7 @@
                         creatureList[i].timeout = Date.now() + 2000 + (Math.random()*5000);
                     }
 
-                    screenCtx.clearRect(0, 0, screenCtx.canvas.clientWidth, screenCtx.canvas.clientHeight);
+                    screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
 
                     //go one step towards destination
                     var xPart = Math.cos(creatureList[i].moveD) * creatureList[i].speed * deltaTime;
@@ -320,7 +320,7 @@
         }
 
         function loadCreature(){
-            loadImage(shrimpMode ? "img/shrimp.png" : "img/deer-eating.png", creatureImg)
+            loadImage(shrimpMode ? "img/shrimp.png" : "img/deer.png", creatureImg)
             .then(function(img){
 
                 for(var i = 0; i < creatureCount; i++){
