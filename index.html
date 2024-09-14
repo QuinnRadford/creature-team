@@ -38,6 +38,11 @@
             resizeCanvas();
         }
         
+
+        const resizeObserver =new ResizeObserver(() => {
+            resizeCanvas();
+        }).observe(document.body)
+
         
 
         class Grass{
@@ -72,12 +77,22 @@
         var creatureEating = new Image();
         var grassImg = new Image();
 
+        var creatureSpeakUp = new Image();
+        var creatureSpeakDown = new Image();
+
+        var deerBlushUp = new Image();
+        var deerBlushDown = new Image();
+        
+
         const loadImage = (url, img) => new Promise((resolve, reject) => {
             img.addEventListener('load', () => resolve(img));
             img.addEventListener('error', (err) => reject(err));
             img.src = url;
         });
 
+        loadImage("img/deer-blush-up.png", deerBlushUp).then(function(){
+            loadImage("img/deer-blush-down.png", deerBlushDown);
+        });
         
 
         class Creature{
@@ -96,19 +111,28 @@
             img;
             invert = false;
             img2;
+            img3;
+            img4;
+
             moving = false;
             timeout = Date.now();
             invertColour = false;
 
             wanderLength = 100;
+            isSpeaking = false;
+            speakTime = 1;
+            speakOpacity = 1;
+            blushOpacity = 1;
 
-            constructor(canvas, ctx, x, y, img, img2){
+            constructor(canvas, ctx, x, y, img, img2, img3, img4){
                 this.x = x;
                 this.canvas = canvas;
                 this.ctx = ctx;
                 this.y = y;
                 this.img = img;
                 this.img2 = img2;
+                this.img3 = img3;
+                this.img4 = img4;
                 
                 if(shrimpMode){
                     this.height = 60;
@@ -122,8 +146,10 @@
 
             draw(){
                 this.ctx.save();
+                this.progressSpeaking();
 
                 if(this.moving){
+
                     var thisImage = this.img;
                 }else{
                     var thisImage = this.img2;
@@ -137,10 +163,47 @@
                     this.ctx.translate(this.x + this.width/2, this.y + this.height/2);
                     this.ctx.scale(-1, 1);
                     this.ctx.drawImage(thisImage, -this.width/2, -this.height/2, this.width, this.height);
+                    if(this.isSpeaking){
+                        this.ctx.globalAlpha = this.speakOpacity;
+                        if(this.moving){
+                            this.ctx.drawImage(this.img3, -this.width/2, -this.height/2, this.width, this.height);
+                        }else{
+                            this.ctx.drawImage(this.img4, -this.width/2, -this.height/2, this.width, this.height);
+                        }
+
+                        this.ctx.globalAlpha = this.blushOpacity;
+                        if(this.moving){
+                            this.ctx.drawImage(deerBlushUp, -this.width/2, -this.height/2, this.width, this.height);
+                        }else{
+                            this.ctx.drawImage(deerBlushDown, -this.width/2, -this.height/2, this.width, this.height);
+                        }
+                    }
                 }else{
                     this.ctx.drawImage(thisImage, this.x, this.y, this.width, this.height);
+                    if(this.isSpeaking){
+                        this.ctx.globalAlpha = this.speakOpacity;
+                        if(this.moving){
+                            this.ctx.drawImage(this.img3, this.x, this.y, this.width, this.height);
+                        }else{
+                            this.ctx.drawImage(this.img4, this.x, this.y, this.width, this.height);
+                        }
+
+                        this.ctx.globalAlpha = this.blushOpacity;
+                        if(this.moving){
+                            this.ctx.drawImage(deerBlushUp, this.x, this.y, this.width, this.height);
+                        }else{
+                            this.ctx.drawImage(deerBlushDown, this.x, this.y, this.width, this.height);
+                        }
+                    }
                 }
                 this.ctx.restore();
+            }
+
+            speak(){
+                this.isSpeaking = true;
+                this.speakTime = (Date.now()/1000).toFixed(2);
+                this.speakOpacity = 1;
+                this.blushOpacity = 1;
             }
             wander(){
                 var deltaX = this.targetX - this.x;
@@ -178,6 +241,36 @@
                 this.targetX = grassList[grassIndex].x + (grassList[grassIndex].width/2);
                 this.targetY = grassList[grassIndex].y + grassList[grassIndex].height - this.height;
 
+            }
+
+            moveStep(deltaTime){
+                if( Math.abs(this.x - this.moveX) <= 1 && Math.abs(this.y - this.moveY) <= 1){
+                    this.wander();
+                }
+
+                if( Math.abs(this.x - this.targetX) <= 5 && Math.abs(this.y - this.targetY) <= 5){
+                    this.moving = false;
+                    
+                    this.timeout = Date.now() + 2000 + (Math.random()*5000);
+                }
+
+                //go one step towards destination
+                var xPart = Math.cos(this.moveD) * this.speed * deltaTime;
+                var yPart = Math.sin(this.moveD) * this.speed * deltaTime;
+                this.x = this.x + xPart;
+                this.y = this.y + yPart;
+            }
+
+            progressSpeaking(){
+                if(this.isSpeaking){
+                    var now = (Date.now()/1000).toFixed(2);
+                    if((now - this.speakTime) > 2){
+                        this.isSpeaking = false;
+                    }else{
+                        this.speakOpacity = Math.max(0,this.speakOpacity - (deltaTime * 3));
+                        this.blushOpacity = Math.max(0,this.blushOpacity - (deltaTime * 1));
+                    }
+                }
             }
         }
 
@@ -219,32 +312,116 @@
         
         var creatureList = [];
 
+        var textList = [];
+
+        var isMouseOnCreature = false;
+        var activeCreatureIndex = -1;
+
+        var mouseX = 0;
+        var mouseY = 0;
+
+        $('#screen').on('mousemove', function(e){
+            mouseX = e.originalEvent.offsetX;
+            mouseY = e.originalEvent.offsetY;
+            checkMousePosition();
+        });
+
+
+        function checkMousePosition(){
+            isMouseOnCreature = false;
+            for(let i = 0; i < creatureList.length; i++){
+                if(mouseX >= creatureList[i].x && mouseX <= (creatureList[i].x + creatureList[i].width) && mouseY >= creatureList[i].y && mouseY <= (creatureList[i].y + creatureList[i].height)){
+                    isMouseOnCreature = true;
+                    activeCreatureIndex = i;
+                }
+            }
+            if(isMouseOnCreature){
+                $('#screen').css('cursor', 'pointer');
+            }else{
+                $('#screen').css('cursor', '');
+            }
+        }
+
+        $('#screen').on('click', function(e){
+            if(isMouseOnCreature && creatureList[activeCreatureIndex]){
+                textList.push(new Bleat(screenCanvas, screenCtx, creatureList[activeCreatureIndex].x + 20, creatureList[activeCreatureIndex].y + 20));
+                creatureList[activeCreatureIndex].speak()
+            }
+        });
+
+        class Bleat{
+            ctx;
+            x;
+            y;
+            height = 60;
+            width = 60;
+            canvas;
+            img;
+            floatDirection;
+            floatSpeed = 24;
+            driftSpeed = 12;
+            lastFlipTime;
+            flipTime = 2;
+            fontSize = 12;
+            opacity = 1;
+            active = 1;
+            
+
+            constructor(canvas, ctx, x, y){
+                this.x = x;
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.y = y;
+                this.floatSpeed = this.floatSpeed + Math.round(this.floatSpeed*Math.random());
+                this.driftSpeed = this.driftSpeed + Math.round(this.driftSpeed*Math.random());
+                this.flipTime = this.flipTime + Math.round(this.flipTime*Math.random());
+                this.setFloatDirection()
+                this.lastFlipTime = Date.now();
+            }
+
+            draw(){
+                this.ctx.save();
+                this.ctx.fillStyle = "rgba(0, 0, 0, " + this.opacity + ")";
+                this.ctx.font = this.fontSize+'px sans-serif';
+                this.ctx.fillText('Bleat!', this.x, this.y)
+                this.ctx.restore();
+            }
+
+            setFloatDirection(){
+                this.floatDirection = Math.round((Math.random()*this.driftSpeed*2)) - this.driftSpeed;
+            }
+
+            animate(deltaTime){
+                var now = Date.now();
+                if((now - this.lastFlipTime)/1000 > this.flipTime){
+                    this.lastFlipTime = now;
+                    this.flipTime = this.flipTime + Math.round(this.flipTime*Math.random());
+                    this.floatDirection = this.floatDirection * -1.0;
+                }
+
+                this.opacity = Math.max(0, this.opacity - (0.1*deltaTime));
+                if(this.opacity <= 0) this.active = 0;
+
+                this.fontSize = this.fontSize + (1*deltaTime);
+                this.x = this.x - (deltaTime*this.floatDirection);
+                this.y = this.y - (deltaTime*this.floatSpeed);
+                
+            }
+        }
+
+
 
         //creature player
         function moveCreature(frameTime){
             var drawStart = Date.now();
             deltaTime = (drawStart - frameTime)/1000;
+            checkMousePosition();
             for(var i = 0; i < creatureList.length; i++){
                 if(creatureList[i].moving){
-                    if( Math.abs(creatureList[i].x - creatureList[i].moveX) <= 1 && Math.abs(creatureList[i].y - creatureList[i].moveY) <= 1){
-                        creatureList[i].wander();
-                    }
-
-                    if( Math.abs(creatureList[i].x - creatureList[i].targetX) <= 5 && Math.abs(creatureList[i].y - creatureList[i].targetY) <= 5){
-                        creatureList[i].moving = false;
-                        
-                        creatureList[i].timeout = Date.now() + 2000 + (Math.random()*5000);
-                    }
-
-                    screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
-
-                    //go one step towards destination
-                    var xPart = Math.cos(creatureList[i].moveD) * creatureList[i].speed * deltaTime;
-                    var yPart = Math.sin(creatureList[i].moveD) * creatureList[i].speed * deltaTime;
-                    creatureList[i].x = creatureList[i].x + xPart;
-                    creatureList[i].y = creatureList[i].y + yPart;
+                    creatureList[i].moveStep(deltaTime);
                 }
             }
+            screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
 
             //figure out draw order
             var drawList = [];
@@ -265,6 +442,14 @@
                 }
                 drawList.push(grassList[i]);
             }
+
+            for(var i = 0; i< textList.length; i++){
+                textList[i].animate(deltaTime)
+                drawList.push(textList[i]);
+            }
+
+            //filter out inactive text
+            textList = textList.filter((x) => x.active == 1);
 
             //draw stuff
             for(var i = 0; i < drawList.length; i++){
@@ -321,15 +506,23 @@
 
         function loadCreature(){
             loadImage(shrimpMode ? "img/shrimp.png" : "img/deer.png", creatureImg)
-            .then(function(img){
-
-                for(var i = 0; i < creatureCount; i++){
-                    var rand1 = Math.random();
-                    var rand2 = Math.random();
-                    creatureList.push(new Creature(screenCanvas, screenCtx, Math.floor((canvasBoundX * rand1)),Math.floor((canvasBoundY * rand2)), img, creatureEating));
-                    creatureList[i].draw();
-                }
-                beginCreature();
+            .then(function(img1){
+                var deerImg = img1;
+                loadImage("img/deer-speak-down.png", creatureSpeakDown).then(function(img2){
+                    var downImg = img2;
+                    loadImage("img/deer-speak-up.png", creatureSpeakUp).then(function(img3){
+                        var upImg = img3;
+                        for(var i = 0; i < creatureCount; i++){
+                            var rand1 = Math.random();
+                            var rand2 = Math.random();
+                            creatureList.push(new Creature(screenCanvas, screenCtx, Math.floor((canvasBoundX * rand1)),Math.floor((canvasBoundY * rand2)), deerImg, creatureEating, upImg, downImg));
+                            creatureList[i].draw();
+                        }
+                        beginCreature();
+                    });
+                });
+        
+                
             })
             .catch(err => console.error(err));
         }
