@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Creature Team</title>
+        <script src="js/jquery-3.6.0.min.js"></script>
+        <link rel="stylesheet" href="css/home2.css"/>
+    </head>
+    <body>
+        <div class="content">
+            <canvas id="screen"></canvas>
+        </div>
+    </body>
+
+    <script>
+        var $container, canvasHeight, canvasWidth,canvasBoundX,canvasBoundY,isMobileDevice, creature;
+        var screenCanvas = document.getElementById('screen');
+        var screenCtx = this.screenCanvas.getContext('2d');
+
+    $(document).ready(function(){
+        $container = $('.content');
+
+        resizeCanvas();
+        if(isTouchDevice()){
+            isMobileDevice = true;
+        }
+
+        if(isMobileDevice){
+            $('body').css('padding',0);
+            resizeCanvas();
+        }
+        
+
+        const resizeObserver =new ResizeObserver(() => {
+            resizeCanvas();
+        }).observe(document.body)
+
+        
+
+        function resizeCanvas(){
+            if($container.width() <= 480){
+                $container.css({
+                    height:"150%",
+                    width:"150%",
+                    transform:"scale(0.6666) translate(-25%, -25%)"
+                });
+            }else{
+                $container.css({
+                    height:"100%",
+                    width:"100%",
+                    transform:""
+                });
+            }
+            canvasHeight = $container.height();
+            canvasWidth = $container.width();
+            canvasBoundX = canvasWidth - 60;
+            canvasBoundY = canvasHeight - 60;
+
+
+            screenCanvas.height = canvasHeight;
+            screenCanvas.width = canvasWidth;
+        }
+
+
+
+        var grassList = [];
+        
+        var creatureList = [];
+
+        var textList = [];
+
+        var isMouseOnCreature = false;
+        var activeCreatureIndex = -1;
+
+        var mouseX = 0;
+        var mouseY = 0;
+
+        waves = [];
+        for(let i = 0; i < 4; i++){
+            var wavelength = (64*Math.random())+32;
+            waves.push(
+                {
+                    wavelength: wavelength,
+                    frequency: 2/(wavelength),
+                    speed: 16*Math.random() + 16,
+                    amplitude: Math.random()
+                },
+            )
+        }
+
+
+
+        wavesy = [];
+        for(let i = 0; i < 4; i++){
+            var wavelength = (64*Math.random())+32;
+            wavesy.push(
+                {
+                    wavelength: wavelength,
+                    frequency: 2/(wavelength),
+                    speed: 32*Math.random() + 16,
+                    amplitude: Math.random()
+                },
+            )
+        }
+
+
+        var timeCount = 0;
+        //creature player
+        function playWave(frameTime){
+            var drawStart = Date.now();
+            deltaTime = (drawStart - frameTime)/1000;
+            timeCount += deltaTime*1;
+            screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
+            //rows
+            for(var i = 0; i < screenCanvas.height/8; i++){
+                for(var ii = 0; ii < screenCanvas.width/8; ii++){
+                    var lumY = 0;
+                    var lumX = 0;
+
+                    for(let iii = 0; iii < waves.length; iii++){
+                        lumX += calculateWave(waves[iii], ii, timeCount, 1)/waves.length;
+                    }
+
+                    for(let iii = 0; iii < wavesy.length; iii++){
+                        lumY += calculateWave(wavesy[iii], i, timeCount, 1)/wavesy.length;
+                    }
+
+                    var lum = lumX/2 + lumY/2;
+
+                    drawPixel(ii*4, i*4,lum*111,lum*111,lum*255);
+                }
+            }
+
+            /* graphs */
+            for(var i = 0; i < screenCtx.canvas.width/8; i++){
+                var baseline = Math.round(screenCtx.canvas.height/4);
+
+                
+                for(let iii = 0; iii < wavesy.length; iii++){
+                    lum += calculateWave(wavesy[iii], i, timeCount,0);
+                }
+                
+                drawPixel(i*4, baseline + (lum), 0, 255, 255);
+                drawPixel(i*4, baseline, 255, 0, 0);
+            }
+
+
+            for(var i = 0; i < screenCtx.canvas.height/8; i++){
+                var baseline = Math.round(screenCtx.canvas.width/4);
+
+                
+                for(let iii = 0; iii < wavesy.length; iii++){
+                    lum += calculateWave(wavesy[iii], i, timeCount,0);
+                }
+                
+                drawPixel(baseline + (lum), i*4, 255, 0, 255);
+                drawPixel(baseline, i*4, 255, 0, 0);
+            }
+            
+
+                window.requestAnimationFrame(function(){
+                    playWave(drawStart);
+                });
+        }
+
+        function calculateWave(wave, x, time, offset){
+            return wave.amplitude*(Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency))+offset);
+        }
+
+        function drawPixel(x,y,r,g,b,a){
+            screenCtx.fillStyle = "rgb("+r+","+g+","+b+")";
+            screenCtx.fillRect( x, y, 4, 4);
+        }
+
+
+        function beginWave(){
+            window.requestAnimationFrame(function(){
+                playWave(Date.now());
+            });
+        }
+
+        
+        
+
+        function isTouchDevice() {
+            return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+        }
+
+        //start playing
+        beginWave();
+    });
+    </script>
+</html>
