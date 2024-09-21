@@ -19,6 +19,8 @@
         var screenCanvas = document.getElementById('screen');
         var screenCtx = this.screenCanvas.getContext('2d');
 
+        var scaleFactor = 8;
+
     $(document).ready(function(){
         $container = $('.content');
 
@@ -31,6 +33,8 @@
             $('body').css('padding',0);
             resizeCanvas();
         }
+
+        
         
 
         const resizeObserver =new ResizeObserver(() => {
@@ -42,16 +46,14 @@
         function resizeCanvas(){
             if($container.width() <= 480){
                 $container.css({
-                    height:"150%",
-                    width:"150%",
-                    transform:"scale(0.6666) translate(-25%, -25%)"
+                    height:$('body').height()+"px",
+                    width:$('body').width()+"px"
                 });
             }else{
                 var size = Math.min($container.height(), $container.width());
                 $container.css({
-                    height: size+"px",
-                    width: size+"px",
-                    transform:""
+                    eight:$('body').height()+"px",
+                    width:$('body').width()+"px"
                 });
             }
             canvasHeight = $container.height();
@@ -62,6 +64,8 @@
 
             screenCanvas.height = canvasHeight;
             screenCanvas.width = canvasWidth;
+
+            scaleFactor = Math.round(Math.max(canvasHeight,canvasWidth)/64);
         }
 
 
@@ -108,8 +112,8 @@
 
             screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
             //rows
-            for(var i = 0; i < screenCanvas.height/8; i++){
-                for(var ii = 0; ii < screenCanvas.width/8; ii++){
+            for(var i = 0; i < screenCanvas.height/scaleFactor; i++){
+                for(var ii = 0; ii < screenCanvas.width/scaleFactor; ii++){
 
                     var lum = 0;
                     var totalAmplitude = 0;
@@ -123,7 +127,7 @@
                     lum = Math.round((lum/totalAmplitude + 0.5)*128); 
                     
 
-                    drawPixel(ii*8, i*8,lum/2,lum/2,lum);
+                    drawPixel(ii*scaleFactor, i*scaleFactor,lum/2,lum/2,lum);
                 }
             }
 
@@ -142,7 +146,7 @@
 
         function drawPixel(x,y,r,g,b,a){
             screenCtx.fillStyle = "rgb("+r+","+g+","+b+")";
-            screenCtx.fillRect( x, y, 8, 8);
+            screenCtx.fillRect( x, y, scaleFactor, scaleFactor);
         }
 
 
