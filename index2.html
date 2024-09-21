@@ -47,9 +47,10 @@
                     transform:"scale(0.6666) translate(-25%, -25%)"
                 });
             }else{
+                var size = Math.min($container.height(), $container.width());
                 $container.css({
-                    height:"100%",
-                    width:"100%",
+                    height: size+"px",
+                    width: size+"px",
                     transform:""
                 });
             }
@@ -78,31 +79,23 @@
         var mouseY = 0;
 
         waves = [];
-        for(let i = 0; i < 4; i++){
-            var wavelength = (64*Math.random())+32;
+        var frequency = 0.1;
+        var amplitude = 0.8;
+        for(let i = 0; i < 32; i++){
+            
+            var angle = 360*Math.random();
+            
             waves.push(
                 {
-                    wavelength: wavelength,
-                    frequency: 2/(wavelength),
-                    speed: 16*Math.random() + 16,
-                    amplitude: Math.random()
+                    frequency: frequency,
+                    speed: 12*Math.random() + 6,
+                    amplitude: amplitude,
+                    directionX: Math.cos(angle),
+                    directionY: Math.sin(angle)
                 },
             )
-        }
-
-
-
-        wavesy = [];
-        for(let i = 0; i < 4; i++){
-            var wavelength = (64*Math.random())+32;
-            wavesy.push(
-                {
-                    wavelength: wavelength,
-                    frequency: 2/(wavelength),
-                    speed: 32*Math.random() + 16,
-                    amplitude: Math.random()
-                },
-            )
+            frequency = frequency*1.18;
+            amplitude = amplitude*0.78;
         }
 
 
@@ -112,53 +105,27 @@
             var drawStart = Date.now();
             deltaTime = (drawStart - frameTime)/1000;
             timeCount += deltaTime*1;
+
             screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
             //rows
             for(var i = 0; i < screenCanvas.height/8; i++){
                 for(var ii = 0; ii < screenCanvas.width/8; ii++){
-                    var lumY = 0;
-                    var lumX = 0;
 
+                    var lum = 0;
+                    var totalAmplitude = 0;
                     for(let iii = 0; iii < waves.length; iii++){
-                        lumX += calculateWave(waves[iii], ii, timeCount, 1)/waves.length;
+                        var deriv = 0
+                        if(iii > 0) deriv = waveDeriv(waves[iii-1], waves[iii-1].directionX*ii + waves[iii-1].directionY*i, timeCount);
+                        lum += calculateWave(waves[iii], waves[iii].directionX*(ii+deriv) + waves[iii].directionY*(i+deriv), timeCount, 0);
+                        totalAmplitude += waves[iii].amplitude;
                     }
 
-                    for(let iii = 0; iii < wavesy.length; iii++){
-                        lumY += calculateWave(wavesy[iii], i, timeCount, 1)/wavesy.length;
-                    }
+                    lum = Math.round((lum/totalAmplitude + 0.5)*128); 
+                    
 
-                    var lum = lumX/2 + lumY/2;
-
-                    drawPixel(ii*4, i*4,lum*111,lum*111,lum*255);
+                    drawPixel(ii*8, i*8,lum/2,lum/2,lum);
                 }
             }
-
-            /* graphs */
-            for(var i = 0; i < screenCtx.canvas.width/8; i++){
-                var baseline = Math.round(screenCtx.canvas.height/4);
-
-                
-                for(let iii = 0; iii < wavesy.length; iii++){
-                    lum += calculateWave(wavesy[iii], i, timeCount,0);
-                }
-                
-                drawPixel(i*4, baseline + (lum), 0, 255, 255);
-                drawPixel(i*4, baseline, 255, 0, 0);
-            }
-
-
-            for(var i = 0; i < screenCtx.canvas.height/8; i++){
-                var baseline = Math.round(screenCtx.canvas.width/4);
-
-                
-                for(let iii = 0; iii < wavesy.length; iii++){
-                    lum += calculateWave(wavesy[iii], i, timeCount,0);
-                }
-                
-                drawPixel(baseline + (lum), i*4, 255, 0, 255);
-                drawPixel(baseline, i*4, 255, 0, 0);
-            }
-            
 
                 window.requestAnimationFrame(function(){
                     playWave(drawStart);
@@ -166,12 +133,16 @@
         }
 
         function calculateWave(wave, x, time, offset){
-            return wave.amplitude*(Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency))+offset);
+            return wave.amplitude*(Math.pow(Math.E,Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency))) - 1);
+        }
+
+        function waveDeriv(wave, x, time){
+            return wave.frequency * wave.amplitude * (Math.pow(Math.E,Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency))) - 1) * Math.cos((x * wave.frequency) + (time * wave.speed * wave.frequency)) ;
         }
 
         function drawPixel(x,y,r,g,b,a){
             screenCtx.fillStyle = "rgb("+r+","+g+","+b+")";
-            screenCtx.fillRect( x, y, 4, 4);
+            screenCtx.fillRect( x, y, 8, 8);
         }
 
 
