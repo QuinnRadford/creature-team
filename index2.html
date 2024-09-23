@@ -20,6 +20,8 @@
         var screenCtx = this.screenCanvas.getContext('2d');
 
         var scaleFactor = 8;
+        var frameTimeSum = 0;
+        var doDeriv = true;
 
     $(document).ready(function(){
         $container = $('.content');
@@ -33,6 +35,17 @@
             $('body').css('padding',0);
             resizeCanvas();
         }
+       
+        $('body').on('keyup', function(e){
+            e.preventDefault();
+            if(e.key == 'Enter'){
+                doDeriv = !doDeriv;
+            }
+
+        });
+
+        var urlParams = new URLSearchParams(window.location.search);
+        var showFps = urlParams.get('fps');
 
         
         
@@ -83,8 +96,10 @@
         var mouseY = 0;
 
         waves = [];
-        var frequency = 0.1;
-        var amplitude = 0.8;
+        var frameRate = 0;
+        var frequency = 0.085;
+        var amplitude = 1;
+        let frameCount = 0;
         for(let i = 0; i < 32; i++){
             
             var angle = 360*Math.random();
@@ -106,29 +121,49 @@
         var timeCount = 0;
         //creature player
         function playWave(frameTime){
+            frameCount++;
             var drawStart = Date.now();
             deltaTime = (drawStart - frameTime)/1000;
             timeCount += deltaTime*1;
 
-            screenCtx.clearRect(0, 0, screenCtx.canvas.width, screenCtx.canvas.height);
+            var lums = [];
             //rows
             for(var i = 0; i < screenCanvas.height/scaleFactor; i++){
+                lums[i] = [];
                 for(var ii = 0; ii < screenCanvas.width/scaleFactor; ii++){
 
                     var lum = 0;
                     var totalAmplitude = 0;
-                    for(let iii = 0; iii < waves.length; iii++){
+                    for(let iii = 1; iii < waves.length; iii++){
                         var deriv = 0
-                        if(iii > 0) deriv = waveDeriv(waves[iii-1], waves[iii-1].directionX*ii + waves[iii-1].directionY*i, timeCount);
-                        lum += calculateWave(waves[iii], waves[iii].directionX*(ii+deriv) + waves[iii].directionY*(i+deriv), timeCount, 0);
+                        if(iii > 0 && doDeriv) deriv = waveDeriv(waves[iii-1], waves[iii-1].directionX*ii + waves[iii-1].directionY*i, timeCount);
+                        lum += calculateWave(waves[iii], waves[iii].directionX*(ii + deriv) + waves[iii].directionY*(i + deriv), timeCount, 0);
                         totalAmplitude += waves[iii].amplitude;
                     }
 
-                    lum = Math.round((lum/totalAmplitude + 0.5)*128); 
-                    
-
-                    drawPixel(ii*scaleFactor, i*scaleFactor,lum/2,lum/2,lum);
+                    lum = Math.round((lum/totalAmplitude)*256); 
+                    lums[i].push(lum);
                 }
+            }
+
+            for(let i = 0; i < lums.length; i++){
+                for(let ii = 0; ii < lums[i].length; ii++){
+                    drawPixel(ii*scaleFactor, i*scaleFactor,lums[i][ii]/2,lums[i][ii]/2,lums[i][ii]);
+                }
+            }
+
+            if(showFps){
+                if(!(frameCount%16)){
+                    frameRate = frameTimeSum/16;
+                    frameTimeSum = 0;
+                    frameCount = 0;
+                }
+                frameTimeSum += 1/deltaTime;
+                screenCtx.fillStyle = 'white';
+                screenCtx.font = "bold 18px sans-serif";
+                screenCtx.fillText(`${(frameRate).toFixed(1)}`+"", screenCtx.canvas.width-40, 20);
+
+                screenCtx.fillText(doDeriv ? "ON" : "OFF", screenCtx.canvas.width-40, 50);
             }
 
                 window.requestAnimationFrame(function(){
@@ -137,11 +172,11 @@
         }
 
         function calculateWave(wave, x, time, offset){
-            return wave.amplitude*(Math.pow(Math.E,Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency))) - 1);
+            return wave.amplitude*(Math.pow(Math.E,(Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency)) - 1)));
         }
 
         function waveDeriv(wave, x, time){
-            return wave.frequency * wave.amplitude * (Math.pow(Math.E,Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency))) - 1) * Math.cos((x * wave.frequency) + (time * wave.speed * wave.frequency)) ;
+            return wave.frequency * wave.amplitude * (Math.pow(Math.E,Math.sin((x * wave.frequency) + (time * wave.speed * wave.frequency)) - 1) ) * Math.cos((x * wave.frequency) + (time * wave.speed * wave.frequency)) ;
         }
 
         function drawPixel(x,y,r,g,b,a){
