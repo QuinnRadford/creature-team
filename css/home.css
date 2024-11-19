@@ -14,10 +14,29 @@ body {
   background-image: url("../img/grass-flower-bg.jpg");
   background-size: 200px;
   background-repeat: repeat;
+  cursor: none;
 }
 
 .canvas-ready {
   opacity: 1;
+}
+
+.paw-cursor {
+  height: 32px;
+  width: 32px;
+  background-image: url("../img/paw-closed.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  position: absolute;
+  z-index: 1000;
+}
+
+.paw-open {
+  background-image: url("../img/paw-open.png");
+}
+
+.paw-closed {
+  background-image: url("../img/paw-pet.png") !important;
 }
 
 canvas {

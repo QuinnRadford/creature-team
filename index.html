@@ -9,9 +9,11 @@
         <link rel="stylesheet" href="css/home.css"/>
     </head>
     <body>
+        <div class="paw-cursor"></div>
         <div class="content">
             <canvas id="screen"></canvas>
         </div>
+        
     </body>
 
     <script>
@@ -375,11 +377,33 @@
 
         var mouseX = 0;
         var mouseY = 0;
+        var $pawCursor = $('.paw-cursor');
+
+        $('body').on('mousemove', function(e){
+            mouseY = e.clientY - 16;
+            mouseX = e.clientX - 16;
+            $pawCursor.css('transform', `translate3d(${mouseX}px, ${mouseY}px, 0)`);
+        })
 
         $('#screen').on('mousemove', function(e){
             mouseX = e.originalEvent.offsetX;
             mouseY = e.originalEvent.offsetY;
             checkMousePosition();
+        });
+
+        $('body').on('mousedown', function(e){
+            if(isMouseOnCreature){
+                $pawCursor.addClass('paw-closed');
+            }
+        });
+
+        $('body').on('mouseup', function(e){
+            $pawCursor.removeClass('paw-closed');
+            if(isMouseOnCreature && creatureList[activeCreatureIndex]){
+                textList.push(new Bleat(screenCanvas, screenCtx, creatureList[activeCreatureIndex].x + 20, creatureList[activeCreatureIndex].y + 20));
+                creatureList[activeCreatureIndex].speak()
+                userInterface.setScore(userInterface.score + 1);
+            }
         });
 
 
@@ -392,18 +416,14 @@
                 }
             }
             if(isMouseOnCreature){
-                $('#screen').css('cursor', 'pointer');
+                $pawCursor.addClass('paw-open')
             }else{
-                $('#screen').css('cursor', '');
+                $pawCursor.removeClass('paw-open')
             }
         }
 
         $('#screen').on('click', function(e){
-            if(isMouseOnCreature && creatureList[activeCreatureIndex]){
-                textList.push(new Bleat(screenCanvas, screenCtx, creatureList[activeCreatureIndex].x + 20, creatureList[activeCreatureIndex].y + 20));
-                creatureList[activeCreatureIndex].speak()
-                userInterface.setScore(userInterface.score + 1);
-            }
+            
         });
 
         class Bleat{
@@ -601,7 +621,7 @@
         }
 
         
-        
+       
 
         function isTouchDevice() {
             return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
