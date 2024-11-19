@@ -615,6 +615,7 @@
                 creatureList[i].chooseTarget(grassList);
                 creatureList[i].wander();
             }
+            $(screenCanvas).addClass('canvas-ready');
             window.requestAnimationFrame(function(){
                 moveCreature(Date.now());
             });

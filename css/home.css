@@ -16,12 +16,19 @@ body {
   background-repeat: repeat;
 }
 
+.canvas-ready {
+  opacity: 1;
+}
+
 canvas {
   background: transparent;
   -webkit-user-select: none;
      -moz-user-select: none;
           user-select: none;
   -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  transition-property: opacity;
+  transition-duration: 1s;
 }
 
 body.shrimp-mode {
