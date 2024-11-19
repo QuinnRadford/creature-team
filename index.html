@@ -93,29 +93,38 @@
             }
 
             draw(){
-                this.ctx.save();
-                if(isMobileDevice){
-                    var imageWidth = Math.round(this.canvas.width * 0.5);
-                }else{
-                    var imageWidth = Math.round(this.canvas.width * 0.3);
-                }
-                
-                var imageHeight = Math.round(imageWidth/2);
-                this.ctx.drawImage(this.imageList.bushLeft, 0, this.canvas.height - imageHeight, imageWidth, imageHeight);
-                this.ctx.drawImage(this.imageList.bushRight, this.canvas.width - imageWidth, this.canvas.height - imageHeight, imageWidth, imageHeight);
-                this.ctx.drawImage(this.imageList.treeLeft, 0, 0, imageWidth, imageHeight);
-                this.ctx.drawImage(this.imageList.treeRight, this.canvas.width - imageWidth, 0, imageWidth, imageHeight);
+                if(this.score < 11){
+                    this.ctx.save();
 
-                var pawHeight = Math.round(imageHeight * 0.5);
-                this.ctx.drawImage(this.imageList.paws, this.canvas.width - imageWidth + pawHeight + Math.round(pawHeight/4), this.canvas.height - imageHeight + pawHeight, pawHeight, pawHeight);
-                
-                this.ctx.fillStyle = "rgb(0, 0, 0)";
-                this.ctx.textAlign = "center";
-                this.ctx.font = Math.round(pawHeight/1.4)+'px sans-serif';
-                this.ctx.fillText(this.score, this.canvas.width - imageWidth + pawHeight + pawHeight + Math.round(pawHeight ), this.canvas.height - imageHeight + pawHeight + Math.round(pawHeight/2) + Math.round(pawHeight/4))
-                this.ctx.fillStyle = "rgb(255, 255, 255)";
-                this.ctx.fillText(this.score, this.canvas.width - imageWidth + pawHeight + pawHeight + Math.round(pawHeight) - 2, this.canvas.height - imageHeight + pawHeight + Math.round(pawHeight/2) + Math.round(pawHeight/4) - 2)
-                this.ctx.restore();
+                    if(this.score > 5){
+                        this.ctx.globalAlpha = 1 - ((this.score - 5)/5);
+                    }
+                    
+                    if(isMobileDevice){
+                        var imageWidth = Math.round(this.canvas.width * 0.5);
+                    }else{
+                        var imageWidth = Math.round(this.canvas.width * 0.3);
+                    }
+
+                    
+                    
+                    var imageHeight = Math.round(imageWidth/2);
+                    this.ctx.drawImage(this.imageList.bushLeft, 0, this.canvas.height - imageHeight, imageWidth, imageHeight);
+                    this.ctx.drawImage(this.imageList.bushRight, this.canvas.width - imageWidth, this.canvas.height - imageHeight, imageWidth, imageHeight);
+                    this.ctx.drawImage(this.imageList.treeLeft, 0, 0, imageWidth, imageHeight);
+                    this.ctx.drawImage(this.imageList.treeRight, this.canvas.width - imageWidth, 0, imageWidth, imageHeight);
+
+                    var pawHeight = Math.round(imageHeight * 0.5);
+                    this.ctx.drawImage(this.imageList.paws, this.canvas.width - imageWidth + pawHeight + Math.round(pawHeight/4), this.canvas.height - imageHeight + pawHeight, pawHeight, pawHeight);
+                    
+                    this.ctx.fillStyle = "rgb(0, 0, 0)";
+                    this.ctx.textAlign = "center";
+                    this.ctx.font = Math.round(pawHeight/1.4)+'px sans-serif';
+                    this.ctx.fillText(this.score, this.canvas.width - imageWidth + pawHeight + pawHeight + Math.round(pawHeight ), this.canvas.height - imageHeight + pawHeight + Math.round(pawHeight/2) + Math.round(pawHeight/4))
+                    this.ctx.fillStyle = "rgb(255, 255, 255)";
+                    this.ctx.fillText(this.score, this.canvas.width - imageWidth + pawHeight + pawHeight + Math.round(pawHeight) - 2, this.canvas.height - imageHeight + pawHeight + Math.round(pawHeight/2) + Math.round(pawHeight/4) - 2)
+                    this.ctx.restore();
+                }
             }
         }
 
