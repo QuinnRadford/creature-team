@@ -23,11 +23,6 @@
         $container = $('.content');
 
         var urlParams = new URLSearchParams(window.location.search);
-        var shrimpMode = urlParams.get('shrimp');
-
-        if(shrimpMode){
-            $('body').addClass('shrimp-mode');
-        }
         resizeCanvas();
         if(isTouchDevice()){
             isMobileDevice = true;
@@ -61,10 +56,7 @@
                 this.y = y;
                 this.img = img;
 
-                if(shrimpMode){
-                    this.height = 120;
-                    this.width = 120;
-                }
+
             }
 
             draw(){
@@ -211,14 +203,7 @@
                 this.img3 = img3;
                 this.img4 = img4;
                 
-                if(shrimpMode){
-                    this.height = 60;
-                    this.width = 60;
-                    var colorRandom = Math.random();
-                    if(colorRandom > 0.5){
-                        this.invertColour = true;
-                    }
-                }
+
             }
 
             draw(){
@@ -232,9 +217,6 @@
                     var thisImage = this.img2;
                 }
 
-                if(shrimpMode && this.invertColour){
-                    this.ctx.filter = 'invert(1)';
-                }
                 
                 if(this.invert){
                     this.ctx.translate(this.x + this.width/2, this.y + this.height/2);
@@ -381,11 +363,8 @@
 
         var grassList = [];
 
-        if(shrimpMode){
-            var creatureCount = Math.max(Math.round(grassCount/10), 5);
-        }else{
-            var creatureCount = Math.max(Math.round(grassCount/20), 3);
-        }
+        var creatureCount = Math.max(Math.round(grassCount/20), 3);
+      
         
         var creatureList = [];
 
@@ -552,14 +531,14 @@
             
         }
 
-        loadImage(shrimpMode ? "img/shrimp.svg" : "img/deer-eating.png", creatureEating)
+        loadImage("img/deer-eating.png", creatureEating)
         .then(function(img){
             loadGrass();
         })
         .catch(err => console.error(err));
 
         function loadGrass(){
-            loadImage(shrimpMode ? "img/seaweed.png" : "img/grass.svg", grassImg)
+            loadImage("img/grass.svg", grassImg)
             .then(function(img){
                 //initialize creature
                 for(var i = 0; i < grassCount; i++){
@@ -587,7 +566,7 @@
         }
 
         function loadCreature(){
-            loadImage(shrimpMode ? "img/shrimp.png" : "img/deer.png", creatureImg)
+            loadImage("img/deer.png", creatureImg)
             .then(function(img1){
                 var deerImg = img1;
                 loadImage("img/deer-speak-down.png", creatureSpeakDown).then(function(img2){
