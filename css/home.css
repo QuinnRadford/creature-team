@@ -39,6 +39,29 @@ body {
   background-image: url("../img/paw-pet.png") !important;
 }
 
+.loading-container {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  text-align: center;
+  margin-top: 50vh;
+  opacity: 1;
+  transition-property: opacity;
+  transition-duration: 1s;
+}
+.loading-container .loading {
+  font-size: 32px;
+  font-weight: bold;
+  font-family: "roboto", sans-serif;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+
+.loading-done {
+  opacity: 0;
+}
+
 canvas {
   background: transparent;
   -webkit-user-select: none;

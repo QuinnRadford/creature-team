@@ -10,6 +10,7 @@
     </head>
     <body>
         <div class="paw-cursor"></div>
+        <div class="loading-container"><div class="loading">Loading deers...</div></div>
         <div class="content">
             <canvas id="screen"></canvas>
         </div>
@@ -375,9 +376,11 @@
         var isMouseOnCreature = false;
         var activeCreatureIndex = -1;
 
-        var mouseX = 0;
-        var mouseY = 0;
+        var mouseX = Math.round(canvasWidth/2);
+        var mouseY = Math.round(canvasHeight/2);
         var $pawCursor = $('.paw-cursor');
+
+        $pawCursor.css('transform', `translate3d(${mouseX}px, ${mouseY}px, 0)`);
 
         $('body').on('mousemove', function(e){
             mouseY = e.clientY - 16;
@@ -615,6 +618,12 @@
                 creatureList[i].wander();
             }
             $(screenCanvas).addClass('canvas-ready');
+
+            $('.loading-container').addClass('loading-done');
+            setTimeout(function(){
+                $('.loading-container').remove();
+            },1000);
+
             window.requestAnimationFrame(function(){
                 moveCreature(Date.now());
             });
