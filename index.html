@@ -380,6 +380,10 @@
         var mouseY = Math.round(canvasHeight/2);
         var $pawCursor = $('.paw-cursor');
 
+        if(isMobileDevice){
+            $pawCursor.hide();
+        }
+
         $pawCursor.css('transform', `translate3d(${mouseX}px, ${mouseY}px, 0)`);
 
         $('body').on('mousemove', function(e){
