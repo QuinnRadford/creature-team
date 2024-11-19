@@ -73,6 +73,53 @@
                 this.ctx.restore();
             }
         }
+
+        class UserInterface{
+            ctx;
+            canvas;
+            imageList;
+            isMobileDevice;
+            score = 0;
+
+            constructor(canvas, ctx, imageList, isMobileDevice){
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.imageList = imageList;
+                this.isMobileDevice = isMobileDevice;
+            }
+
+            setScore(newScore){
+                this.score = newScore;
+            }
+
+            draw(){
+                this.ctx.save();
+                if(isMobileDevice){
+                    var imageWidth = Math.round(this.canvas.width * 0.5);
+                }else{
+                    var imageWidth = Math.round(this.canvas.width * 0.3);
+                }
+                
+                var imageHeight = Math.round(imageWidth/2);
+                this.ctx.drawImage(this.imageList.bushLeft, 0, this.canvas.height - imageHeight, imageWidth, imageHeight);
+                this.ctx.drawImage(this.imageList.bushRight, this.canvas.width - imageWidth, this.canvas.height - imageHeight, imageWidth, imageHeight);
+                this.ctx.drawImage(this.imageList.treeLeft, 0, 0, imageWidth, imageHeight);
+                this.ctx.drawImage(this.imageList.treeRight, this.canvas.width - imageWidth, 0, imageWidth, imageHeight);
+
+                var pawHeight = Math.round(imageHeight * 0.5);
+                this.ctx.drawImage(this.imageList.paws, this.canvas.width - imageWidth + pawHeight + Math.round(pawHeight/4), this.canvas.height - imageHeight + pawHeight, pawHeight, pawHeight);
+                
+                this.ctx.fillStyle = "rgb(0, 0, 0)";
+                this.ctx.textAlign = "center";
+                this.ctx.font = Math.round(pawHeight/1.4)+'px sans-serif';
+                this.ctx.fillText(this.score, this.canvas.width - imageWidth + pawHeight + pawHeight + Math.round(pawHeight ), this.canvas.height - imageHeight + pawHeight + Math.round(pawHeight/2) + Math.round(pawHeight/4))
+                this.ctx.fillStyle = "rgb(255, 255, 255)";
+                this.ctx.fillText(this.score, this.canvas.width - imageWidth + pawHeight + pawHeight + Math.round(pawHeight) - 2, this.canvas.height - imageHeight + pawHeight + Math.round(pawHeight/2) + Math.round(pawHeight/4) - 2)
+                this.ctx.restore();
+            }
+        }
+
+
         var creatureImg = new Image();
         var creatureEating = new Image();
         var grassImg = new Image();
@@ -82,6 +129,18 @@
 
         var deerBlushUp = new Image();
         var deerBlushDown = new Image();
+
+        var uiImageList = {
+            bushLeft:new Image(),
+            bushRight:new Image(),
+            treeLeft:new Image(),
+            treeRight:new Image(),
+            paws:new Image()
+        };
+
+
+        var userInterface = new UserInterface(screenCanvas, screenCtx, uiImageList, isMobileDevice);
+        
         
 
         const loadImage = (url, img) => new Promise((resolve, reject) => {
@@ -93,6 +152,15 @@
         loadImage("img/deer-blush-up.png", deerBlushUp).then(function(){
             loadImage("img/deer-blush-down.png", deerBlushDown);
         });
+
+
+        var uiImagePromises = [ 
+            loadImage("img/tree-left.png", uiImageList.treeLeft),
+            loadImage("img/tree-right.png", uiImageList.treeRight),
+            loadImage("img/bush-right.png", uiImageList.bushRight),
+            loadImage("img/bush-left.png", uiImageList.bushLeft),
+            loadImage("img/paws.png", uiImageList.paws),
+        ]
         
 
         class Creature{
@@ -346,6 +414,7 @@
             if(isMouseOnCreature && creatureList[activeCreatureIndex]){
                 textList.push(new Bleat(screenCanvas, screenCtx, creatureList[activeCreatureIndex].x + 20, creatureList[activeCreatureIndex].y + 20));
                 creatureList[activeCreatureIndex].speak()
+                userInterface.setScore(userInterface.score + 1);
             }
         });
 
@@ -451,6 +520,8 @@
             //filter out inactive text
             textList = textList.filter((x) => x.active == 1);
 
+            drawList.push(userInterface);
+
             //draw stuff
             for(var i = 0; i < drawList.length; i++){
                 drawList[i].draw();
@@ -499,7 +570,9 @@
                 })
                 //initial grass draw
                 grassList.map(function(x){x.draw();});
-                loadCreature();
+                Promise.all(uiImagePromises).then(()=>{
+                    loadCreature();
+                });
             })
             .catch(err => console.error(err));
         }
