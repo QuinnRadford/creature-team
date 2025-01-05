@@ -620,7 +620,7 @@
             //filter out inactive text
             textList = textList.filter((x) => x.active == 1);
             let snowNum = 10;
-            if(isMobileDevice) snowNum = 5;
+            if(isMobileDevice) snowNum = 2;
             if(Math.random() < snowNum*deltaTime){
                 snowList.push(new Snowflake(screenCanvas,screenCtx, Math.floor((canvasBoundX * Math.random())), -5))
             }
