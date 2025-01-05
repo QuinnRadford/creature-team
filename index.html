@@ -159,10 +159,10 @@
 
 
         var uiImagePromises = [ 
-            loadImage("img/tree-left.png", uiImageList.treeLeft),
-            loadImage("img/tree-right.png", uiImageList.treeRight),
-            loadImage("img/bush-right.png", uiImageList.bushRight),
-            loadImage("img/bush-left.png", uiImageList.bushLeft),
+            loadImage("img/tree-left-winter.png", uiImageList.treeLeft),
+            loadImage("img/tree-right-winter.png", uiImageList.treeRight),
+            loadImage("img/bush-right-winter.png", uiImageList.bushRight),
+            loadImage("img/bush-left-winter.png", uiImageList.bushLeft),
             loadImage("img/paws.png", uiImageList.paws),
         ]
         
@@ -372,6 +372,8 @@
         var creatureList = [];
 
         var textList = [];
+        
+        var snowList = [];
 
         var isMouseOnCreature = false;
         var activeCreatureIndex = -1;
@@ -493,6 +495,89 @@
             }
         }
 
+        class Snowflake{
+            ctx;
+            x;
+            y;
+            height = 60;
+            width = 60;
+            canvas;
+            img;
+            floatDirection;
+            floatSpeed = 24;
+            driftSpeed = 12;
+            lastFlipTime;
+            flipTime = 2;
+            fontSize = 12;
+            opacity = 1;
+            active = 1;
+            flakeSize = 4;
+            flakeColor = 255;
+
+            blur = 0;
+            
+
+            constructor(canvas, ctx, x, y){
+                this.x = x;
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.y = y;
+                this.floatSpeed = this.floatSpeed + Math.round(this.floatSpeed*Math.random());
+                this.driftSpeed = this.driftSpeed + Math.round(this.driftSpeed*Math.random());
+                this.flipTime = this.flipTime + Math.round(this.flipTime*Math.random());
+                this.setFloatDirection()
+                this.lastFlipTime = Date.now();
+                this.flakeSize = 2 + Math.round(3 * Math.random());
+                this.flakeColor = 255 - Math.round(25 * Math.random());
+
+                let random = Math.random();
+                if( random < 0.25){
+                    this.blur = 1;
+                }
+            }
+
+            draw(){
+                this.ctx.save();
+                this.ctx.fillStyle = "rgba("+this.flakeColor+", "+this.flakeColor+", "+this.flakeColor+", " + this.opacity + ")";
+                this.ctx.font = this.fontSize+'px sans-serif';
+
+
+                if(this.blur){
+                    this.ctx.filter = "blur("+this.blur+"px)";
+                }
+                
+                this.ctx.beginPath();
+                this.ctx.arc(this.x, this.y, this.flakeSize, 0, 2 * Math.PI)
+                this.ctx.fill()
+                this.ctx.lineWidth = 1;
+                
+                this.ctx.strokeStyle = "#333";
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
+
+            setFloatDirection(){
+                this.floatDirection = Math.round((Math.random()*this.driftSpeed*2)) - this.driftSpeed;
+            }
+
+            animate(deltaTime){
+                var now = Date.now();
+                if((now - this.lastFlipTime)/1000 > this.flipTime){
+                    this.lastFlipTime = now;
+                    this.flipTime = this.flipTime + Math.round(this.flipTime*Math.random());
+                    this.floatDirection = this.floatDirection * -1.0;
+                }
+
+                //this.opacity = Math.max(0, this.opacity - (0.1*deltaTime));
+                if(this.y >= this.ctx.canvas.height) this.active = 0;
+
+                this.fontSize = this.fontSize + (1*deltaTime);
+                this.x = this.x - (deltaTime*this.floatDirection);
+                this.y = this.y + (deltaTime*this.floatSpeed);
+                
+            }
+        }
+
 
 
         //creature player
@@ -535,6 +620,18 @@
             //filter out inactive text
             textList = textList.filter((x) => x.active == 1);
 
+            if(Math.random() < 0.25){
+                snowList.push(new Snowflake(screenCanvas,screenCtx, Math.floor((canvasBoundX * Math.random())), 0))
+            }
+
+            for(let i = 0; i < snowList.length; i++){
+                snowList[i].animate(deltaTime);
+                drawList.push(snowList[i]);
+            }
+
+            //filter out inactive text
+            snowList = snowList.filter((x) => x.active == 1);
+
             drawList.push(userInterface);
 
             //draw stuff
@@ -558,14 +655,14 @@
             
         }
 
-        loadImage("img/deer-eating.png", creatureEating)
+        loadImage("img/deer-eating-winter.png", creatureEating)
         .then(function(img){
             loadGrass();
         })
         .catch(err => console.error(err));
 
         function loadGrass(){
-            loadImage("img/grass.svg", grassImg)
+            loadImage("img/grass-winter.svg", grassImg)
             .then(function(img){
                 //initialize creature
                 for(var i = 0; i < grassCount; i++){
@@ -593,7 +690,7 @@
         }
 
         function loadCreature(){
-            loadImage("img/deer.png", creatureImg)
+            loadImage("img/deer-winter.png", creatureImg)
             .then(function(img1){
                 var deerImg = img1;
                 loadImage("img/deer-speak-down.png", creatureSpeakDown).then(function(img2){
