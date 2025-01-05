@@ -620,8 +620,8 @@
             //filter out inactive text
             textList = textList.filter((x) => x.active == 1);
 
-            if(Math.random() < 0.25){
-                snowList.push(new Snowflake(screenCanvas,screenCtx, Math.floor((canvasBoundX * Math.random())), 0))
+            if(Math.random() < 10*deltaTime){
+                snowList.push(new Snowflake(screenCanvas,screenCtx, Math.floor((canvasBoundX * Math.random())), -5))
             }
 
             for(let i = 0; i < snowList.length; i++){
