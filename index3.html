@@ -23,6 +23,7 @@
             var resolution = 128;
             var halfRes = 64;
             var wallTexture;
+            var hoofTexture;
             var keyInputs = {
                 w:false,
                 s:false,
@@ -37,11 +38,17 @@
                 altClick:false
             }
 
+            //init grid
             var gridSquares = [];
             for(var i = 0; i < ctx.canvas.width/gridSize; i++){
                 gridSquares[i] = [];
                 for(var ii = 0; ii < ctx.canvas.height/gridSize; ii++){
-                    gridSquares[i][ii] = false;
+                    if(ii == 0 || ii == Math.round(ctx.canvas.height/gridSize - 1) || i == 0 || i == Math.round(ctx.canvas.width/gridSize - 1)){
+                        gridSquares[i][ii] = true;
+                    }else{
+                        gridSquares[i][ii] = false;
+                    }
+                    
                 }
             }
 
@@ -80,6 +87,66 @@
                     ctx.lineTo(lineX, ctx.canvas.height);
                     ctx.stroke();
                 }
+            }
+
+            class Hoof{
+                isWalking = false;
+                isAnimating = false;
+                ctx;
+                screenX = 150;
+                screenY = 160;
+                initialY;
+                animateSpeed = 0.15;
+                topLimit = 20;
+                bottomLimit = -20;
+                animateMode = 1;
+                width = 69;
+                height = 240;
+                constructor(ctx){
+                    this.ctx = ctx;
+                    this.screenY = ctx.canvas.height - this.screenY;
+                    this.initialY = this.screenY;
+                    this.screenX = ctx.canvas.height - this.screenX;
+                    this.topLimit += this.screenY;
+                    this.bottomLimit += this.screenY;
+
+                }
+                animate(deltaT){
+                    if(keyInputs.s || keyInputs.w){
+                        this.isWalking = true;
+                        this.isAnimating = true;
+                    }else{
+                        this.isWalking = false;
+                    }
+
+                    if(this.isAnimating){
+                        if(this.animateMode == 1){
+                            this.screenY += (this.animateSpeed*deltaT)
+                        }else{
+                            this.screenY -= (this.animateSpeed*deltaT)
+                        }
+                        
+                        
+                        if(this.screenY <= this.bottomLimit){
+                            this.animateMode = 1;
+                            this.screenY = this.bottomLimit;
+                        }else if(this.screenY >= this.topLimit){
+                            this.animateMode = 0;
+                            this.screenY = this.topLimit;
+                        }
+
+                        if((this.screenY <= this.bottomLimit || this.screenY >= this.topLimit || Math.abs(this.screenY - this.initialY) <= 2) && !this.isWalking){
+                            this.isAnimating = false;
+                        }
+
+                    }
+                    
+                }
+
+                draw(){
+                    this.ctx.drawImage(hoofTexture, Math.round(this.screenX), Math.round(this.screenY), this.width, this.height);
+                }
+
             }
 
             class Player{
@@ -157,6 +224,8 @@
                 }
             }
 
+            var hoof = new Hoof(ctxCamera);
+
             var player = new Player(ctx, 256, 256);
             var rayIntersections = [
 
@@ -189,8 +258,10 @@
 
             function drawCamera(ctxCamera, rayIntersections){
                 ctxCamera.save();
-                ctxCamera.fillStyle = "black";
-                ctxCamera.fillRect(0,0,ctxCamera.canvas.width,ctxCamera.canvas.height);
+                ctxCamera.fillStyle = "grey";
+                ctxCamera.fillRect(0,0,ctxCamera.canvas.width,ctxCamera.canvas.height/2);
+                ctxCamera.fillStyle = "#7ca666";
+                ctxCamera.fillRect(0,ctxCamera.canvas.height/2,ctxCamera.canvas.width,ctxCamera.canvas.height/2);
                 for(var i = 0; i < resolution; i++){
                     let width = Math.floor(ctxCamera.canvas.width/resolution);
                     if(rayIntersections[i] && rayIntersections[i].intersects){
@@ -211,13 +282,12 @@
                         Math.floor()
                         ctxCamera.drawImage(wallTexture, textureCoordinate, 0, 1, 32, i*width, yOffset, width, height)
                         
-                    }else{
-                        ctxCamera.fillStyle = "black";
-                        ctxCamera.fillRect(i*width, 0, width, ctxCamera.canvas.height);
                     }
                 }
                 ctxCamera.restore();
             }
+
+
 
             function play(deltaT){
                 var frameStart = performance.now();
@@ -229,6 +299,8 @@
                 player.draw();
                 rayCast(ctx, player, mouseInput);
                 drawCamera(ctxCamera, rayIntersections);
+                hoof.animate(deltaT);
+                hoof.draw();
 
                 window.requestAnimationFrame(function(){
                     play(performance.now() - frameStart);
@@ -382,7 +454,14 @@
                 console.log("loaded")
                 play(0);
             }
-            wallTexture.src = "img/wall.png";
+
+            hoofTexture = new Image(184,639);
+            hoofTexture.onload= function(){
+                wallTexture.src = "img/wall.png";
+            }
+
+            hoofTexture.src = "img/hoof.png";
+            
 
         </script>
     </body>
