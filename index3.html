@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    </head>
+    <body>
+        <canvas id="game" width="512" height="512">
+
+        </canvas>
+        <canvas id="camera" width="512" height="512">
+
+        </canvas>
+        <script>
+            const canvasCamera = document.getElementById('camera');
+            /** @type {CanvasRenderingContext2D} */
+            const ctxCamera = canvasCamera.getContext('2d');
+
+            const canvas = document.getElementById('game');
+            /** @type {CanvasRenderingContext2D} */
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = "black";
+            ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+            var gridSize = 16;
+            var resolution = 128;
+            var halfRes = 64;
+            var wallTexture;
+            var keyInputs = {
+                w:false,
+                s:false,
+                a:false,
+                d:false,
+            };
+
+            var mouseInput = {
+                x:0,
+                y:0,
+                click:false,
+                altClick:false
+            }
+
+            var gridSquares = [];
+            for(var i = 0; i < ctx.canvas.width/gridSize; i++){
+                gridSquares[i] = [];
+                for(var ii = 0; ii < ctx.canvas.height/gridSize; ii++){
+                    gridSquares[i][ii] = false;
+                }
+            }
+
+            function drawSquares(ctx, gridSize){
+                ctx.save();
+                ctx.fillStyle = 'blue';
+                for(var i = 0; i < gridSquares.length; i++){
+                    for(var ii = 0; ii < gridSquares[i].length; ii++){
+                        if(gridSquares[i][ii]){
+                            ctx.fillRect(i*gridSize,ii*gridSize,gridSize,gridSize);
+                        }
+                    }
+                }
+                ctx.restore();
+            }
+
+
+            
+
+            function generateGrid(gridSize){
+                ctx.fillStyle = "black";
+                ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 1;
+                for(var i = 0; i < ctx.canvas.width/gridSize; i++){
+                    let lineY = i*gridSize
+                    ctx.beginPath();
+                    ctx.moveTo(0,lineY);
+                    ctx.lineTo(ctx.canvas.width,lineY);
+                    ctx.stroke();
+                }
+                for(var i = 0; i < ctx.canvas.height/gridSize; i++){
+                    let lineX = i*gridSize
+                    ctx.beginPath();
+                    ctx.moveTo(lineX,0)
+                    ctx.lineTo(lineX, ctx.canvas.height);
+                    ctx.stroke();
+                }
+            }
+
+            class Player{
+                ctx;
+                xPos;
+                yPos;
+                speed = 80;
+                rSpeed = 200;
+                directionX = 0;
+                directionY = 0;
+                constructor(ctx, xPos, yPos){
+                    this.ctx = ctx;
+                    this.xPos = xPos;
+                    this.yPos = yPos;
+                }
+                draw(){
+                    this.ctx.save()
+                    this.ctx.fillStyle = "green";
+                    this.ctx.beginPath();
+                    this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                    this.ctx.fill();
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = "yellow";
+                    this.ctx.lineWidth = 4;
+                    this.ctx.moveTo(this.xPos, this.yPos);
+                    this.ctx.lineTo(this.xPos + this.directionX*10, this.yPos + this.directionY*10);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+                animate(deltaT){
+
+                    let dy = 0;
+                    let dx = 0;
+                    if(keyInputs.w){
+                        dy -= this.speed * deltaT/1000;
+                    }
+                    if(keyInputs.s){
+                        dy += this.speed * deltaT/1000;
+                    }
+
+                    
+                    if(keyInputs.a){
+                        dx -= this.rSpeed * deltaT/1000;
+                    }
+                    if(keyInputs.d){
+                        dx += this.rSpeed * deltaT/1000;
+                    }
+
+                    if(dx != 0){
+                        let viewAngle = Math.atan2(this.directionY, this.directionX);
+                        let newAngle = viewAngle + ( dx * 0.0174533);
+                        this.directionY = Math.sin(newAngle);
+                        this.directionX = Math.cos(newAngle);
+                    }
+
+                    if(dy != 0){
+                        let viewAngle = Math.atan2(this.directionY, this.directionX);
+                        let nextY = this.yPos - Math.sin(viewAngle)*dy;
+                        let nextX = this.xPos - Math.cos(viewAngle)*dy;
+
+                        let nextGridY = Math.floor(nextY/gridSize);
+                        let nextGridX = Math.floor(nextX/gridSize);
+
+                        if(gridSquares[nextGridX] && !gridSquares[nextGridX][nextGridY]){
+                            this.yPos = nextY;
+                            this.xPos = nextX;
+                        }
+
+                        this.yPos = Math.max(this.yPos, 0);
+                        this.yPos = Math.min(this.yPos, ctx.canvas.height);
+
+                        this.xPos = Math.max(this.xPos, 0);
+                        this.xPos = Math.min(this.xPos, ctx.canvas.width);
+                    }
+                }
+            }
+
+            var player = new Player(ctx, 256, 256);
+            var rayIntersections = [
+
+            ];
+
+            function drawMouse(ctx){
+                ctx.save()
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.arc(Math.round(mouseInput.x), Math.round(mouseInput.y), 4, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function paintSquares(mouseInput, gridSize){
+                if(mouseInput.click || mouseInput.altClick){
+                    let gridX = Math.floor(mouseInput.x/gridSize);
+                    let gridY = Math.floor(mouseInput.y/gridSize);
+                    if(gridX < gridSquares.length){
+                        if(gridY < gridSquares[gridX].length){
+                            if(mouseInput.click){
+                                gridSquares[gridX][gridY] = true;
+                            }else if(mouseInput.altClick){
+                                gridSquares[gridX][gridY] = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            function drawCamera(ctxCamera, rayIntersections){
+                ctxCamera.save();
+                ctxCamera.fillStyle = "black";
+                ctxCamera.fillRect(0,0,ctxCamera.canvas.width,ctxCamera.canvas.height);
+                for(var i = 0; i < resolution; i++){
+                    let width = Math.floor(ctxCamera.canvas.width/resolution);
+                    if(rayIntersections[i] && rayIntersections[i].intersects){
+                        
+                        let textureCoordinate;
+                        if(rayIntersections[i].side == "y"){
+                            textureCoordinate = Math.floor(32*(rayIntersections[i].x - Math.floor(rayIntersections[i].x)));
+                            ctxCamera.fillStyle = "HSL(240, 100%, 50%)";
+                        }else{
+                            textureCoordinate = Math.floor(32*(rayIntersections[i].y - Math.floor(rayIntersections[i].y)));
+                            ctxCamera.fillStyle = "HSL(180, 100%, 50%)";
+                        }
+                        
+                        let height =  256 * (1/rayIntersections[i].distance);
+                        let yOffset = (ctxCamera.canvas.height - height)/2;
+
+                        
+                        Math.floor()
+                        ctxCamera.drawImage(wallTexture, textureCoordinate, 0, 1, 32, i*width, yOffset, width, height)
+                        
+                    }else{
+                        ctxCamera.fillStyle = "black";
+                        ctxCamera.fillRect(i*width, 0, width, ctxCamera.canvas.height);
+                    }
+                }
+                ctxCamera.restore();
+            }
+
+            function play(deltaT){
+                var frameStart = performance.now();
+                generateGrid(gridSize);
+                paintSquares(mouseInput, gridSize);
+                drawSquares(ctx, gridSize);
+                drawMouse(ctx);
+                player.animate(deltaT);
+                player.draw();
+                rayCast(ctx, player, mouseInput);
+                drawCamera(ctxCamera, rayIntersections);
+
+                window.requestAnimationFrame(function(){
+                    play(performance.now() - frameStart);
+                });
+            }
+
+            function rayCast(ctx, player, mouseInput){
+
+                //start and end points in grid space
+                let startCellX = player.xPos/gridSize;
+                let startCellY = player.yPos/gridSize;
+
+                //unit vector
+                let dx = player.directionX;
+                let dy = player.directionY;
+                let viewAngle = Math.atan2(dy, dx);
+                
+                for(var i = -1 * halfRes; i < halfRes; i++){
+                    let offset = (Math.PI/2)/resolution;
+                    let newAngle = viewAngle + offset*i;
+
+                    dx = Math.cos(newAngle);
+                    dy = Math.sin(newAngle);
+
+                    let xRay = 0;
+                    let yRay = 0;
+
+                    //scaling factor step size
+                    let sx =  Math.sqrt(1 + Math.pow(dy/dx,2));
+                    let sy = Math.sqrt(1 + Math.pow(dx/dy,2));
+
+                    let tileCheckX = Math.floor(startCellX);
+                    let tileCheckY = Math.floor(startCellY);
+
+                    //step directions
+                    let xStep;
+                    if(dx < 0){
+                        xStep = -1;
+                        xRay = (startCellX - tileCheckX) * sx;
+                    }else{
+                        xStep = 1;
+                        xRay = (tileCheckX + 1 - startCellX) * sx;
+                    }
+                    
+                    let yStep;
+                    if(dy < 0){
+                        yStep = -1;
+                        yRay = (startCellY - tileCheckY) * sy;
+                    }else{
+                        yStep = 1;
+                        yRay = (tileCheckY + 1 - startCellY) * sy;
+                    }
+
+                    let tileFound = false;
+                    let rayLength = 0;
+                    let side;
+                    while(!tileFound && rayLength < 512){
+                        if(xRay < yRay){
+                            tileCheckX += xStep;
+                            rayLength = xRay;
+                            xRay += sx;
+                            side = "x";
+                        }else{
+                            tileCheckY += yStep;
+                            rayLength = yRay;
+                            yRay += sy;
+                            side = "y";
+                        }
+
+                        if(tileCheckX >= 0 &&  tileCheckY >= 0 && tileCheckX < gridSquares.length && tileCheckY < gridSquares[tileCheckX].length){
+                            if(gridSquares[tileCheckX][tileCheckY]){
+                                tileFound = true;
+                            }
+                        }
+                    }
+
+                    if(tileFound){
+                        let intersectionX = startCellX + (dx * rayLength);
+                        let intersectionY = startCellY + (dy * rayLength);
+                        ctx.save()
+                        ctx.fillStyle = "yellow";
+                        ctx.beginPath();
+                        ctx.arc(Math.round(intersectionX*gridSize), Math.round(intersectionY*gridSize), 4, 0, 2*Math.PI);
+                        ctx.fill();
+                        ctx.restore();
+                        
+                        rayIntersections[i+halfRes] = {
+                            distance:rayLength,
+                            side:side,
+                            angle: 0,
+                            intersects:true,
+                            x:intersectionX,
+                            y:intersectionY
+                        }
+                    }else{
+                        rayIntersections[i+halfRes] = {
+                            distance:0,
+                            side:"",
+                            angle:0,
+                            intersects:false,
+                            x:0,
+                            y:0
+                        }
+                    }
+                }
+                
+            }
+
+            
+            document.addEventListener("keydown",function(e){
+                keyInputs[e.key] = true;
+            });
+
+            document.addEventListener("keyup",function(e){
+                keyInputs[e.key] = false;
+            });
+
+            canvas.addEventListener("mousemove",function(e){
+                mouseInput.x = e.offsetX;
+                mouseInput.y = e.offsetY;
+            });
+
+            canvas.addEventListener("mousedown", function(e){
+                e.preventDefault();
+                if(e.button == 0){
+                    mouseInput.click = true;
+                }else if(e.button == 2){
+                    mouseInput.altClick = true;
+                }
+                return false;
+            });
+
+            canvas.addEventListener("mouseup", function(e){
+                e.preventDefault();
+                if(e.button == 0){
+                    mouseInput.click = false;
+                }else if(e.button == 2){
+                    mouseInput.altClick = false;
+                }
+                return false;
+            });
+
+            canvas.addEventListener("contextmenu",function(e){
+                e.preventDefault();
+                return false;
+            })
+
+            //load wall
+            wallTexture = new Image(32,32);
+            wallTexture.onload = function(){
+                console.log("loaded")
+                play(0);
+            }
+            wallTexture.src = "img/wall.png";
+
+        </script>
+    </body>
+    <footer>
+        
+    </footer>
+</html>
