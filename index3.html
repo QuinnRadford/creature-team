@@ -3,12 +3,44 @@
     <head>
     </head>
     <body>
+        <style>
+            .controls-container{
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                margin:auto;
+                max-width: 220px;
+                gap:8px;
+                margin-top:35px;
+            }
+            .controls-container>div{
+                flex-basis: calc(33.33% - 8px);
+                height:50px;
+                
+                align-content: center;
+                text-align: center;
+                border-radius: 8px;
+                
+            }
+            .controls-container>.key{
+                outline: 2px solid black;
+                background: grey;
+                user-select: none;
+                cursor: pointer;
+            }
+        </style>
         <canvas id="game" width="512" height="512">
 
         </canvas>
         <canvas id="camera" width="512" height="512">
 
         </canvas>
+        <div class="controls-container">
+            <div></div><div class="key" data-key="w">W</div><div></div>
+            <div class="key" data-key="a">A</div>
+            <div class="key" data-key="s">S</div>
+            <div class="key" data-key="d">D</div>
+        </div>
         <script>
             const canvasCamera = document.getElementById('camera');
             /** @type {CanvasRenderingContext2D} */
@@ -34,6 +66,10 @@
             var rayIntersections;
             var spriteList = [];
             var spriteRenders = [];
+
+            var strawbCount = 0;
+
+            var interface;
 
             var mouseInput = {
                 x:0,
@@ -120,6 +156,7 @@
             class Hoof{
                 isWalking = false;
                 isAnimating = false;
+                /** @type {CanvasRenderingContext2D} */
                 ctx;
                 screenX = 150;
                 screenY = 160;
@@ -178,6 +215,7 @@
             }
 
             class Sprite{
+                /** @type {CanvasRenderingContext2D} */
                 ctx;
                 xPos;
                 yPos;
@@ -187,9 +225,11 @@
                 image;
                 width;
                 distance;
+                active = true;
 
                 constructor(ctx, image, xPos, yPos, zPos, width, height){
                     this.ctx = ctx;
+
                     this.image = image;
                     this.xPos = xPos;
                     this.yPos = yPos;
@@ -197,7 +237,9 @@
                     this.width = width/gridSize;
                     this.height = height;
                 }
+                
                 draw(player){
+                    if(!this.active) return true;
                     this.ctx.save();
                     this.ctx.fillStyle = "orange";
                     this.ctx.beginPath();
@@ -270,7 +312,7 @@
                 }
 
                 isVisible(player, rayIntersections){
-
+                    if(!this.active) return true;
                     let yRelative = ( this.yPos - player.yPos)/gridSize;
                     let xRelative = ( this.xPos - player.xPos)/gridSize;
 
@@ -377,8 +419,8 @@
                                     {
                                         pixel:pixel,
                                         distance: playerDistance,
-                                        texture: "strawb",
-                                        textureCoordinate : Math.abs(Math.floor(64 * linesegment)),
+                                        texture: this.image,
+                                        textureCoordinate : Math.abs(Math.floor(this.image.width * linesegment)),
                                     }
                                 )
                             }
@@ -388,7 +430,178 @@
                 }
             }
 
+            class UserInterface{
+                /** @type {CanvasRenderingContext2D} */
+                ctx;
+                faceImg;
+                imgLayerBlink;
+                imgLayerClose;
+                imgLayerBlush;
+
+                netxBlink = 0;
+                nextClose = 0;
+                blinking = false;
+                closed = false;
+                faceSize = 100;
+                borderWidth = 4;
+                insetWidth = 2;
+                oldScore = 0;
+                blush = false;
+                blushStart = 0;
+
+                constructor(ctx, faceImg, blink, closed, blush){
+                    this.ctx = ctx;
+                    this.faceImg = faceImg;
+                    this.imgLayerBlink = blink;
+                    this.imgLayerClose = closed;
+                    this.imgLayerBlush = blush;
+                }
+
+                update(){
+                    let now = performance.now();
+                    if(now > this.netxBlink){
+                        if(this.netxBlink != 0){
+                             this.blinking = true;
+                        }
+                        if(now - this.netxBlink > 500){
+                            this.blinking = false;
+                            this.netxBlink = now + ((Math.random() * 5000) + 2500);
+                            
+                        }
+                    }
+
+                    if(now > this.nextClose){
+                        this.closed = true;
+                        if(now - this.nextClose > 4000){
+                            if(this.nextClose != 0) this.closed = false;
+                            this.nextClose = now + ((Math.random() * 10000) + 5000);
+                        }
+                    }
+
+                    if(this.blush && now - this.blushStart > 1000 && this.blushStart != 0){
+                        this.blush = false;
+                        this.blinking = false;
+                        this.nextClose = now + ((Math.random() * 5000) + 5000);
+                        this.netxBlink = now + ((Math.random() * 5000) + 2500);
+                    }else if(now - this.blushStart <= 1000 && this.blushStart != 0){
+                        this.blinking = true;
+                        this.closed = false;
+                    }
+
+                    if(this.oldScore < strawbCount){
+                        this.oldScore = strawbCount;
+                        this.setBlush();
+                    }
+                }
+
+                setBlinking(){
+                    this.blinking = true;
+                    this.netxtBlink = performance.now();
+                }
+
+                setClosed(){
+                    this.closed = true;
+                    this.nextClose = performance.now();
+                }
+
+                setOpen(){
+                    this.closed = false;
+                    this.nextClose = performance.now() + ((Math.random() * 10000) + 5000);
+                }
+
+                setBlush(){
+                    this.blush = true;
+                    this.blinking = true;
+                    this.blushStart = performance.now();
+                }
+
+                _drawFaceFrame(){
+                    //face frame
+                    this.ctx.save();
+                    this._drawInsetBox(0,0,this.faceSize, this.faceSize)
+                    this.ctx.drawImage(this.faceImg, this.borderWidth + this.insetWidth, this.ctx.canvas.height - this.faceSize + this.borderWidth + this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth) - this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth))
+
+                    if(this.blinking){
+                        this.ctx.drawImage(this.imgLayerBlink, this.borderWidth + this.insetWidth, this.ctx.canvas.height - this.faceSize + this.borderWidth + this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth) - this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth))
+                    }
+                    if(this.closed){
+                        this.ctx.drawImage(this.imgLayerClose, this.borderWidth + this.insetWidth, this.ctx.canvas.height - this.faceSize + this.borderWidth + this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth) - this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth))
+                    }
+
+                    if(this.blush){
+                        this.ctx.drawImage(this.imgLayerBlush, this.borderWidth + this.insetWidth, this.ctx.canvas.height - this.faceSize + this.borderWidth + this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth) - this.insetWidth, this.faceSize - 2*(this.insetWidth + this.borderWidth))
+                    }
+
+
+                    this.ctx.restore();
+                }
+
+                //x y relative bottom left
+                _drawInsetBox(x,y,width, height){
+                    this.ctx.fillStyle = "teal";
+                    this.ctx.fillRect(x, y+this.ctx.canvas.height - height, width, height);
+                    
+                    this.ctx.fillStyle = "grey"
+                    this.ctx.fillRect(x+this.borderWidth, y+this.ctx.canvas.height - height + this.borderWidth, width - this.borderWidth*2 - this.insetWidth, this.insetWidth);
+                    this.ctx.fillRect(x+this.borderWidth, y+this.ctx.canvas.height - height + this.borderWidth, this.insetWidth, height - this.borderWidth*2);
+
+                    this.ctx.fillStyle = "white"
+                    this.ctx.fillRect(x+this.borderWidth, y+this.ctx.canvas.height - this.borderWidth - this.insetWidth, width - this.borderWidth*2 - this.insetWidth, this.insetWidth);
+                    this.ctx.fillRect(x+width - 2*this.borderWidth, y+this.ctx.canvas.height - height + this.borderWidth, this.insetWidth, height - this.borderWidth*2);
+                    
+                    this.ctx.fillStyle = "darkSlateGrey";
+                    this.ctx.fillRect(x+this.borderWidth + this.insetWidth, y+this.ctx.canvas.height - height + this.borderWidth + this.insetWidth, width - 2*(this.insetWidth + this.borderWidth) - this.insetWidth, height - 2*(this.insetWidth + this.borderWidth));
+                    
+                }
+
+                _drawScore(){
+                    let scoreBox = 50;
+                    this.ctx.save();
+                    this._drawInsetBox(this.faceSize, 0, scoreBox, scoreBox)
+                    this.ctx.font = "bold 28px sans-serif";
+                    this.ctx.textAlign = "center";
+                    this.ctx.fillStyle = "white";
+                    this.ctx.fillText(strawbCount, this.faceSize + this.borderWidth + this.insetWidth + (scoreBox - 2*(this.borderWidth + this.insetWidth))/2, this.ctx.canvas.height - (2*this.borderWidth + this.insetWidth) - 4);
+                    this.ctx.restore();
+                }
+
+                draw(){
+                    this._drawFaceFrame();
+                    this._drawScore();
+                }
+            }
+
+            class StrawberrySprite extends Sprite{
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                    
+                    if(this.active){
+                        let yRelative = ( this.yPos - player.yPos)/gridSize;
+                        let xRelative = ( this.xPos - player.xPos)/gridSize;
+                        let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                        if(playerDistance < 0.3){
+                            strawbCount += 1;
+                            this.active = false;
+                        }
+                    }
+                }
+
+                draw(player){
+                    if(!this.active) return true;
+                    this.ctx.save();
+                    this.ctx.fillStyle = "red";
+                    this.ctx.beginPath();
+                    this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
             class Player{
+                /** @type {CanvasRenderingContext2D} */
                 ctx;
                 xPos;
                 yPos;
@@ -493,12 +706,37 @@
                 }
             }
 
+            function compareDistance(a,b){
+                if ( a.distance > b.distance ){
+                    return -1;
+                }
+                if ( a.distance < b.distance ){
+                    return 1;
+                }
+                return 0;
+            }
+
             function drawCamera(ctxCamera, rayIntersections){
                 ctxCamera.save();
-                ctxCamera.fillStyle = "grey";
+                let skygrad = ctxCamera.createLinearGradient(0, ctxCamera.canvas.height/4, 0, ctxCamera.canvas.height/2);
+                skygrad.addColorStop(0, "skyblue");
+                skygrad.addColorStop(1, "white");
+
+                ctxCamera.fillStyle = "skyblue";
                 ctxCamera.fillRect(0,0,ctxCamera.canvas.width,ctxCamera.canvas.height/2);
+
+                ctxCamera.fillStyle = skygrad;
+                ctxCamera.fillRect(0,ctxCamera.canvas.height/4,ctxCamera.canvas.width,ctxCamera.canvas.height/4);
+
+                let groundGrad = ctxCamera.createLinearGradient(0, ctxCamera.canvas.height/2, 0, ctxCamera.canvas.height*0.75);
+                groundGrad.addColorStop(0, "#628251");
+                groundGrad.addColorStop(1, "#7ca666");
+
                 ctxCamera.fillStyle = "#7ca666";
                 ctxCamera.fillRect(0,ctxCamera.canvas.height/2,ctxCamera.canvas.width,ctxCamera.canvas.height/2);
+
+                ctxCamera.fillStyle = groundGrad;
+                ctxCamera.fillRect(0,ctxCamera.canvas.height/2,ctxCamera.canvas.width,ctxCamera.canvas.height/4);
                 //draw walls
                 for(var i = 0; i < resolution; i++){
                     let width = Math.floor(ctxCamera.canvas.width/resolution);
@@ -509,14 +747,15 @@
                     }
                 }
 
+                spriteRenders.sort(compareDistance);
+
                 for(var i = 0; i < spriteRenders.length; i++){
                     let width = Math.floor(ctxCamera.canvas.width/resolution);
                     if(spriteRenders[i]){
                         let height =  256 * (1/spriteRenders[i].distance);
                         let yOffset = (ctxCamera.canvas.height - height)/2;
-                        /* ctxCamera.fillStyle = "white";
-                        ctxCamera.fillRect(spriteRenders[i].pixel*width, yOffset, width, height) */
-                        ctxCamera.drawImage(textureList.imageList[spriteRenders[i].texture], spriteRenders[i].textureCoordinate, 0, 1, textureList.imageList[spriteRenders[i].texture].height, spriteRenders[i].pixel*width, yOffset, width, height)
+
+                        ctxCamera.drawImage(spriteRenders[i].texture, spriteRenders[i].textureCoordinate, 0, 1, spriteRenders[i].texture.height, spriteRenders[i].pixel*width, yOffset, width, height)
                         
                     }
                 }
@@ -526,7 +765,7 @@
             }
 
 
-
+            //main update loop
             function play(deltaT){
                 var frameStart = performance.now();
                 spriteRenders = [];
@@ -537,11 +776,16 @@
                 player.animate(deltaT);
                 player.draw();
                 rayCastView(ctx, player);
-                strawb.draw(player);
-                strawb.isVisible(player, rayIntersections);
+                for(var i = 0; i < spriteList.length; i++){
+                    spriteList[i].draw(player);
+                    spriteList[i].isVisible(player, rayIntersections);
+                }
                 drawCamera(ctxCamera, rayIntersections);
                 hoof.animate(deltaT);
                 hoof.draw();
+
+                interface.update();
+                interface.draw();
                 
 
                 window.requestAnimationFrame(function(){
@@ -690,6 +934,11 @@
                 mouseInput.y = e.offsetY;
             });
 
+            canvas.addEventListener("touchmove",function(e){
+                mouseInput.y = e.changedTouches[0].clientY - canvas.offsetTop;
+                mouseInput.x = e.changedTouches[0].clientX - canvas.offsetLeft;
+            });
+
             canvas.addEventListener("mousedown", function(e){
                 e.preventDefault();
                 if(e.button == 0){
@@ -699,6 +948,22 @@
                 }
                 return false;
             });
+
+            canvas.addEventListener("touchstart", function(e){
+                e.preventDefault();
+                mouseInput.y = e.touches[0].clientY - canvas.offsetTop;
+                mouseInput.x = e.touches[0].clientX - canvas.offsetLeft;
+                mouseInput.click = true;
+                return false;
+            });
+
+            canvas.addEventListener("touchend", function(e){
+                e.preventDefault();
+                mouseInput.click = false;
+                return false;
+            });
+
+            
 
             canvas.addEventListener("mouseup", function(e){
                 e.preventDefault();
@@ -715,8 +980,25 @@
                 return false;
             });
 
+            let keys = document.getElementsByClassName('key');
+            for(var i = 0; i < keys.length; i++){
+                keys[i].addEventListener('touchstart', function(e){
+                    let key = this.getAttribute("data-key");
+                    keyInputs[key] = true;
+                });
+                keys[i].addEventListener('touchend', function(e){
+                    let key = this.getAttribute("data-key");
+                    keyInputs[key] = false;
+                });
+                keys[i].addEventListener('contextmenu', function(e){
+                    e.preventDefault();
+                    return false;
+
+                })
+            }
+
             function createStrawb(x,y){
-                strawb  = new Sprite(ctx, textureList['strawb'], x, y, 0, gridSize, resolution);
+                strawb  = new StrawberrySprite(ctx, textureList.imageList['strawb'], x, y, 0, gridSize, resolution);
                 return strawb;
             }
             
@@ -724,10 +1006,37 @@
             textureList.load("img/wall.png", 'wall');
             textureList.load("img/hoof.png", 'hoof');
             textureList.load("img/strawb.png", 'strawb');
+            textureList.load("img/deer-face.png", 'face');
+            textureList.load("img/deer-face-blink.png", 'face-blink');
+            textureList.load("img/deer-face-closed.png", 'face-close');
+            textureList.load("img/deer-blush.png", 'face-blush');
+            textureList.load("img/flower.png", 'flower');
             textureList.onload(function(){
                 console.log("loaded");
+                let faceImg = textureList.imageList['face'];
+                let faceBlink = textureList.imageList['face-blink'];
+                let faceClose = textureList.imageList['face-close'];
+                let faceBlush = textureList.imageList['face-blush'];
+                let flowerImg = textureList.imageList['flower'];
+                let flowerCount = Math.round(Math.random()*20) + 10;
+                let strawbCount = Math.round(Math.random()*15) + 5;
+
+                for(var i = 0; i < flowerCount; i++){
+                    let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
+                    let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
+                    spriteList.push(new Sprite(ctx, flowerImg, thisSpriteX, thisSpriteY, 0, gridSize, resolution));
+                }
+
                 
-                spriteList.push(createStrawb(12*gridSize,12*gridSize));
+
+                for(var i = 0; i < strawbCount; i++){
+                    let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
+                    let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
+                    spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
+                }
+
+                interface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
+
                 
                 play(0);
             });
