@@ -939,7 +939,7 @@
             });
 
             canvas.addEventListener("touchmove",function(e){
-                mouseInput.y = e.changedTouches[0].clientY - canvas.offsetTop;
+                mouseInput.y = e.changedTouches[0].clientY - canvas.offsetTop + document.scrollingElement.scrollTop;
                 mouseInput.x = e.changedTouches[0].clientX - canvas.offsetLeft;
             });
 
@@ -955,7 +955,7 @@
 
             canvas.addEventListener("touchstart", function(e){
                 e.preventDefault();
-                mouseInput.y = e.touches[0].clientY - canvas.offsetTop;
+                mouseInput.y = e.touches[0].clientY - canvas.offsetTop + document.scrollingElement.scrollTop;
                 mouseInput.x = e.touches[0].clientX - canvas.offsetLeft;
                 mouseInput.click = true;
                 return false;
