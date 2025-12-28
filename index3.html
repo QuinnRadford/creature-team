@@ -22,14 +22,17 @@
             var gridSize = 16;
             var resolution = 128;
             var halfRes = 64;
-            var wallTexture;
-            var hoofTexture;
             var keyInputs = {
                 w:false,
                 s:false,
                 a:false,
                 d:false,
             };
+            var strawb;
+            var hoof;
+            var player;
+            var rayIntersections;
+            var spriteRenders = [];
 
             var mouseInput = {
                 x:0,
@@ -37,6 +40,30 @@
                 click:false,
                 altClick:false
             }
+
+            class ImageLoader{
+                promiseList = [];
+                imageList = {};
+                constructor(){
+
+                }
+
+                load(url, name){
+                    let imageLoader = this;
+                    this.promiseList.push(new Promise(function(resolve,reject){
+                        imageLoader.imageList[name] = new Image();
+                        imageLoader.imageList[name].onload = function(){return resolve();}
+                        imageLoader.imageList[name].onerror = function(){return reject();}
+                        imageLoader.imageList[name].src = url;
+                    }));
+                }
+
+                onload(callback){
+                    Promise.all(this.promiseList).then(callback);
+                }
+            }
+
+            var textureList = new ImageLoader();
 
             //init grid
             var gridSquares = [];
@@ -144,9 +171,163 @@
                 }
 
                 draw(){
-                    this.ctx.drawImage(hoofTexture, Math.round(this.screenX), Math.round(this.screenY), this.width, this.height);
+                    this.ctx.drawImage(textureList.imageList['hoof'], Math.round(this.screenX), Math.round(this.screenY), this.width, this.height);
                 }
 
+            }
+
+            class Sprite{
+                ctx;
+                xPos;
+                yPos;
+                zPos;
+                directionX;
+                directionY;
+                image;
+                width;
+                distance;
+
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    this.ctx = ctx;
+                    this.image = image;
+                    this.xPos = xPos;
+                    this.yPos = yPos;
+                    this.zPos = zPos;
+                    this.width = width/gridSize;
+                    this.height = height;
+                }
+                draw(player){
+                    this.ctx.save();
+                    this.ctx.fillStyle = "orange";
+                    this.ctx.beginPath();
+                    this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                    this.ctx.fill();
+                    this.ctx.restore();
+
+                    this.ctx.save();
+                    let yRelative = (player.yPos - this.yPos)/gridSize;
+                    let xRelative = (player.xPos - this.xPos)/gridSize;
+
+
+                    let gridAngle = Math.atan2(yRelative, xRelative);
+
+                    let playerAngle = Math.atan2(player.directionY, player.directionX);
+
+                    
+                    let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                    let edgeDistance = Math.sqrt(Math.pow(playerDistance,2) + Math.pow(this.width/2,2));
+                    
+                    let edgeAngle = Math.atan2(playerDistance, this.width/2);
+
+
+                    let lineAngle = (gridAngle - Math.PI/2);
+                    let linedx = Math.cos(lineAngle);
+                    let linedy = Math.sin(lineAngle);
+                    
+                    let edge1x = this.xPos/gridSize + (linedx*this.width/2);
+                    let edge1y = this.yPos/gridSize + (linedy*this.width/2);
+
+                    let edge2x = this.xPos/gridSize - (linedx*this.width/2);
+                    let edge2y = this.yPos/gridSize - (linedy*this.width/2);
+
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = "orange";
+                    this.ctx.moveTo(edge1x*gridSize, edge1y*gridSize);
+                    this.ctx.lineTo(edge2x * gridSize, edge2y * gridSize);
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = "green";
+                    this.ctx.beginPath();
+                    this.ctx.arc(Math.round(edge1x*gridSize), Math.round(edge1y*gridSize), 2, 0, 2*Math.PI);
+                    this.ctx.fill();
+                    
+                    let yRelative2 = (player.yPos/gridSize) - edge1y;
+                    let xRelative2 = (player.xPos/gridSize) - edge1x;
+                    let edgeAngle1 = Math.atan2(yRelative2, xRelative2);
+
+                    let yRelative3 = (player.yPos/gridSize) - edge2y;
+                    let xRelative3 = (player.xPos/gridSize) - edge2x;
+                    let edgeAngle2 = Math.atan2(yRelative3, xRelative3);
+
+                    let e1dX = Math.cos(edgeAngle1);
+                    let e1dY = Math.sin(edgeAngle1);
+                    let e2dX = Math.cos(edgeAngle2);
+                    let e2dY = Math.sin(edgeAngle2);
+
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = "green";
+                    this.ctx.moveTo(Math.round(edge1x*gridSize), Math.round(edge1y*gridSize));
+                    this.ctx.lineTo(Math.round(edge1x*gridSize + (edgeDistance*e1dX*gridSize)), Math.round(edge1y*gridSize + (edgeDistance*e1dY*gridSize)));
+                    this.ctx.stroke();
+
+                    this.ctx.strokeStyle = "yellow";
+                    this.ctx.moveTo(Math.round(edge2x*gridSize), Math.round(edge2y*gridSize));
+                    this.ctx.lineTo(Math.round(edge2x*gridSize + (edgeDistance*e2dX*gridSize)), Math.round(edge2y*gridSize + (edgeDistance*e2dY*gridSize)));
+                    this.ctx.stroke();
+
+                    this.ctx.restore();
+                }
+
+                isVisible(player, rayIntersections){
+
+                    let yRelative = ( this.yPos - player.yPos)/gridSize;
+                    let xRelative = ( this.xPos - player.xPos)/gridSize;
+
+
+                    let gridAngle = Math.atan2(yRelative, xRelative);
+
+                    let playerAngle = Math.atan2(player.directionY, player.directionX);
+
+                    
+                    let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                    let edgeDistance = Math.sqrt(Math.pow(playerDistance,2) + Math.pow(this.width/2,2));
+                    
+                    let edgeAngle = Math.atan2(playerDistance, this.width/2);
+
+
+                    let lineAngle = (gridAngle - Math.PI/2);
+                    let linedx = Math.cos(lineAngle);
+                    let linedy = Math.sin(lineAngle);
+                    
+                    let edge1x = this.xPos/gridSize + (linedx*this.width/2);
+                    let edge1y = this.yPos/gridSize + (linedy*this.width/2);
+
+                    let edge2x = this.xPos/gridSize - (linedx*this.width/2);
+                    let edge2y = this.yPos/gridSize - (linedy*this.width/2);
+
+                    let yRelative2 = (player.yPos/gridSize) - edge1y;
+                    let xRelative2 = (player.xPos/gridSize) - edge1x;
+                    let edgeAngle1 = Math.atan2(yRelative2, xRelative2);
+
+                    let yRelative3 = (player.yPos/gridSize) - edge2y;
+                    let xRelative3 = (player.xPos/gridSize) - edge2x;
+                    let edgeAngle2 = Math.atan2(yRelative3, xRelative3);
+
+                    
+                    for(var i = 0; i < rayIntersections.length; i++){
+                        if(rayIntersections[i].distance <= playerDistance){
+                            continue;
+                        }else{
+                            //ray touches sprite
+                        
+                            var angle1 = edgeAngle1 - Math.PI;
+                            var angle2 = edgeAngle2 - Math.PI;
+
+                            if((rayIntersections[i].angle <= angle2 && rayIntersections[i].angle >= angle1)){
+                                
+                                spriteRenders.push(
+                                    {
+                                        pixel:i,
+                                        distance: playerDistance,
+                                        texture: "strawb",
+                                        textureCoordinate : Math.abs(Math.floor(64 * ((edgeAngle1 - Math.PI) - rayIntersections[i].angle) / edgeAngle1 - edgeAngle2)),
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                }
             }
 
             class Player{
@@ -224,10 +405,10 @@
                 }
             }
 
-            var hoof = new Hoof(ctxCamera);
+            hoof = new Hoof(ctxCamera);
 
-            var player = new Player(ctx, 256, 256);
-            var rayIntersections = [
+            player = new Player(ctx, 256, 256);
+            rayIntersections = [
 
             ];
 
@@ -262,28 +443,28 @@
                 ctxCamera.fillRect(0,0,ctxCamera.canvas.width,ctxCamera.canvas.height/2);
                 ctxCamera.fillStyle = "#7ca666";
                 ctxCamera.fillRect(0,ctxCamera.canvas.height/2,ctxCamera.canvas.width,ctxCamera.canvas.height/2);
+                //draw walls
                 for(var i = 0; i < resolution; i++){
                     let width = Math.floor(ctxCamera.canvas.width/resolution);
                     if(rayIntersections[i] && rayIntersections[i].intersects){
-                        
-                        let textureCoordinate;
-                        if(rayIntersections[i].side == "y"){
-                            textureCoordinate = Math.floor(32*(rayIntersections[i].x - Math.floor(rayIntersections[i].x)));
-                            ctxCamera.fillStyle = "HSL(240, 100%, 50%)";
-                        }else{
-                            textureCoordinate = Math.floor(32*(rayIntersections[i].y - Math.floor(rayIntersections[i].y)));
-                            ctxCamera.fillStyle = "HSL(180, 100%, 50%)";
-                        }
-                        
                         let height =  256 * (1/rayIntersections[i].distance);
                         let yOffset = (ctxCamera.canvas.height - height)/2;
-
-                        
-                        Math.floor()
-                        ctxCamera.drawImage(wallTexture, textureCoordinate, 0, 1, 32, i*width, yOffset, width, height)
-                        
+                        ctxCamera.drawImage(textureList.imageList[rayIntersections[i].texture], rayIntersections[i].textureCoordinate, 0, 1, textureList.imageList[rayIntersections[i].texture].height, i*width, yOffset, width, height)
                     }
                 }
+
+                for(var i = 0; i < spriteRenders.length; i++){
+                    let width = Math.floor(ctxCamera.canvas.width/resolution);
+                    if(spriteRenders[i]){
+                        let height =  256 * (1/spriteRenders[i].distance);
+                        let yOffset = (ctxCamera.canvas.height - height)/2;
+                        ctxCamera.drawImage(textureList.imageList[spriteRenders[i].texture], spriteRenders[i].textureCoordinate, 0, 1, textureList.imageList[spriteRenders[i].texture].height, spriteRenders[i].pixel*width, yOffset, width, height)
+                        ctxCamera.fillStyle = "red";
+                        ctxCamera.fillRect(spriteRenders[i].pixel*width, yOffset, width, height)
+                    }
+                }
+                
+
                 ctxCamera.restore();
             }
 
@@ -291,23 +472,95 @@
 
             function play(deltaT){
                 var frameStart = performance.now();
+                spriteRenders = [];
                 generateGrid(gridSize);
                 paintSquares(mouseInput, gridSize);
                 drawSquares(ctx, gridSize);
                 drawMouse(ctx);
                 player.animate(deltaT);
                 player.draw();
-                rayCast(ctx, player, mouseInput);
+                rayCastView(ctx, player);
+                strawb.draw(player);
+                strawb.isVisible(player, rayIntersections);
                 drawCamera(ctxCamera, rayIntersections);
                 hoof.animate(deltaT);
                 hoof.draw();
+                
 
                 window.requestAnimationFrame(function(){
                     play(performance.now() - frameStart);
                 });
             }
 
-            function rayCast(ctx, player, mouseInput){
+
+            //check for intersections with walls
+            //start and end in grid space
+            function castRay(viewAngle, startCellX, startCellY){
+                let dx = Math.cos(viewAngle);
+                let dy = Math.sin(viewAngle);
+
+                let xRay = 0;
+                let yRay = 0;
+
+                //scaling factor step size
+                let sx =  Math.sqrt(1 + Math.pow(dy/dx,2));
+                let sy = Math.sqrt(1 + Math.pow(dx/dy,2));
+
+                let tileCheckX = Math.floor(startCellX);
+                let tileCheckY = Math.floor(startCellY);
+
+                //step directions
+                let xStep;
+                if(dx < 0){
+                    xStep = -1;
+                    xRay = (startCellX - tileCheckX) * sx;
+                }else{
+                    xStep = 1;
+                    xRay = (tileCheckX + 1 - startCellX) * sx;
+                }
+                
+                let yStep;
+                if(dy < 0){
+                    yStep = -1;
+                    yRay = (startCellY - tileCheckY) * sy;
+                }else{
+                    yStep = 1;
+                    yRay = (tileCheckY + 1 - startCellY) * sy;
+                }
+
+                let tileFound = false;
+                let rayLength = 0;
+                let side;
+                while(!tileFound && rayLength < 512){
+                    if(xRay < yRay){
+                        tileCheckX += xStep;
+                        rayLength = xRay;
+                        xRay += sx;
+                        side = "x";
+                    }else{
+                        tileCheckY += yStep;
+                        rayLength = yRay;
+                        yRay += sy;
+                        side = "y";
+                    }
+
+                    if(tileCheckX >= 0 &&  tileCheckY >= 0 && tileCheckX < gridSquares.length && tileCheckY < gridSquares[tileCheckX].length){
+                        if(gridSquares[tileCheckX][tileCheckY]){
+                            tileFound = true;
+                        }
+                    }
+                }
+
+                return {
+                    tileFound:tileFound,
+                    dx:dx,
+                    dy:dy,
+                    rayLength:rayLength,
+                    side:side
+                }
+            }
+
+            function rayCastView(ctx, player){
 
                 //start and end points in grid space
                 let startCellX = player.xPos/gridSize;
@@ -321,88 +574,45 @@
                 for(var i = -1 * halfRes; i < halfRes; i++){
                     let offset = (Math.PI/2)/resolution;
                     let newAngle = viewAngle + offset*i;
+                    let intersect = castRay(newAngle, startCellX, startCellY);
 
-                    dx = Math.cos(newAngle);
-                    dy = Math.sin(newAngle);
-
-                    let xRay = 0;
-                    let yRay = 0;
-
-                    //scaling factor step size
-                    let sx =  Math.sqrt(1 + Math.pow(dy/dx,2));
-                    let sy = Math.sqrt(1 + Math.pow(dx/dy,2));
-
-                    let tileCheckX = Math.floor(startCellX);
-                    let tileCheckY = Math.floor(startCellY);
-
-                    //step directions
-                    let xStep;
-                    if(dx < 0){
-                        xStep = -1;
-                        xRay = (startCellX - tileCheckX) * sx;
-                    }else{
-                        xStep = 1;
-                        xRay = (tileCheckX + 1 - startCellX) * sx;
-                    }
-                    
-                    let yStep;
-                    if(dy < 0){
-                        yStep = -1;
-                        yRay = (startCellY - tileCheckY) * sy;
-                    }else{
-                        yStep = 1;
-                        yRay = (tileCheckY + 1 - startCellY) * sy;
-                    }
-
-                    let tileFound = false;
-                    let rayLength = 0;
-                    let side;
-                    while(!tileFound && rayLength < 512){
-                        if(xRay < yRay){
-                            tileCheckX += xStep;
-                            rayLength = xRay;
-                            xRay += sx;
-                            side = "x";
-                        }else{
-                            tileCheckY += yStep;
-                            rayLength = yRay;
-                            yRay += sy;
-                            side = "y";
-                        }
-
-                        if(tileCheckX >= 0 &&  tileCheckY >= 0 && tileCheckX < gridSquares.length && tileCheckY < gridSquares[tileCheckX].length){
-                            if(gridSquares[tileCheckX][tileCheckY]){
-                                tileFound = true;
-                            }
-                        }
-                    }
-
-                    if(tileFound){
-                        let intersectionX = startCellX + (dx * rayLength);
-                        let intersectionY = startCellY + (dy * rayLength);
+                    if(intersect.tileFound){
+                        let intersectionX = startCellX + (intersect.dx * intersect.rayLength);
+                        let intersectionY = startCellY + (intersect.dy * intersect.rayLength);
                         ctx.save()
                         ctx.fillStyle = "yellow";
                         ctx.beginPath();
                         ctx.arc(Math.round(intersectionX*gridSize), Math.round(intersectionY*gridSize), 4, 0, 2*Math.PI);
                         ctx.fill();
                         ctx.restore();
+
+                        let textureCoordinate;
+                        if(intersect.side == "y"){
+                            textureCoordinate = Math.floor(32*(intersectionX - Math.floor(intersectionX)));
+                        }else{
+                            textureCoordinate = Math.floor(32*(intersectionY - Math.floor(intersectionY)));
+                        }
                         
                         rayIntersections[i+halfRes] = {
-                            distance:rayLength,
-                            side:side,
-                            angle: 0,
+                            distance:intersect.rayLength,
+                            side:intersect.side,
+                            angle: newAngle,
                             intersects:true,
                             x:intersectionX,
-                            y:intersectionY
+                            y:intersectionY,
+                            textureCoordinate:textureCoordinate,
+                            texture:"wall"
                         }
                     }else{
                         rayIntersections[i+halfRes] = {
-                            distance:0,
+                            distance:Infinity,
                             side:"",
-                            angle:0,
+                            angle:newAngle,
                             intersects:false,
                             x:0,
-                            y:0
+                            y:0,
+                            textureCoordinate:0,
+                            texture:""
                         }
                     }
                 }
@@ -447,20 +657,17 @@
                 e.preventDefault();
                 return false;
             })
+            
+            textureList.load("img/wall.png", 'wall');
+            textureList.load("img/hoof.png", 'hoof');
+            textureList.load("img/strawb.png", 'strawb');
+            textureList.onload(function(){
+                console.log("loaded");
 
-            //load wall
-            wallTexture = new Image(32,32);
-            wallTexture.onload = function(){
-                console.log("loaded")
+                strawb  = new Sprite(ctx, textureList['strawb'], 50, 50, 0, gridSize, resolution);
+                
                 play(0);
-            }
-
-            hoofTexture = new Image(184,639);
-            hoofTexture.onload= function(){
-                wallTexture.src = "img/wall.png";
-            }
-
-            hoofTexture.src = "img/hoof.png";
+            });
             
 
         </script>
