@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta name="viewport" content="width=512, user-scalable=0, viewport-fit=contain"/>
     </head>
     <body>
         <style>
@@ -9,13 +10,13 @@
                 flex-direction: row;
                 flex-wrap: wrap;
                 margin:auto;
-                max-width: 220px;
-                gap:8px;
+                max-width: 400px;
+                gap:16px;
                 margin-top:35px;
             }
             .controls-container>div{
-                flex-basis: calc(33.33% - 8px);
-                height:50px;
+                flex-basis: calc(33.33% - 16px);
+                height:100px;
                 
                 align-content: center;
                 text-align: center;
@@ -27,6 +28,9 @@
                 background: grey;
                 user-select: none;
                 cursor: pointer;
+            }
+            body{
+                min-width: 512px;
             }
         </style>
         <canvas id="game" width="512" height="512">
@@ -977,6 +981,7 @@
 
             canvas.addEventListener("contextmenu",function(e){
                 e.preventDefault();
+                e.stopPropagation();
                 return false;
             });
 
@@ -992,6 +997,7 @@
                 });
                 keys[i].addEventListener('contextmenu', function(e){
                     e.preventDefault();
+                    e.stopPropagation();
                     return false;
 
                 })
