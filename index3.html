@@ -32,6 +32,7 @@
             var hoof;
             var player;
             var rayIntersections;
+            var spriteList = [];
             var spriteRenders = [];
 
             var mouseInput = {
@@ -204,7 +205,7 @@
                     this.ctx.fill();
                     this.ctx.restore();
 
-                    this.ctx.save();
+                    /* this.ctx.save();
                     let yRelative = (player.yPos - this.yPos)/gridSize;
                     let xRelative = (player.xPos - this.xPos)/gridSize;
 
@@ -265,7 +266,7 @@
                     this.ctx.lineTo(Math.round(edge2x*gridSize + (edgeDistance*e2dX*gridSize)), Math.round(edge2y*gridSize + (edgeDistance*e2dY*gridSize)));
                     this.ctx.stroke();
 
-                    this.ctx.restore();
+                    this.ctx.restore(); */
                 }
 
                 isVisible(player, rayIntersections){
@@ -302,30 +303,82 @@
                     let yRelative3 = (player.yPos/gridSize) - edge2y;
                     let xRelative3 = (player.xPos/gridSize) - edge2x;
                     let edgeAngle2 = Math.atan2(yRelative3, xRelative3);
-
-                    //edges outside the players view cone
-                    if(!((edgeAngle1 - Math.PI) >= (playerAngle - Math.PI/4) && (edgeAngle1 - Math.PI) <= (playerAngle + Math.PI/4)) && !((edgeAngle2 - Math.PI) >= (playerAngle - Math.PI/4) && (edgeAngle2 - Math.PI) <= (playerAngle + Math.PI/4))){
-                        return false;
-                    }
+                    
+                    
+                    
+                    edgeAngle1 = (edgeAngle1 - Math.PI);
+                    edgeAngle2 = (edgeAngle2 - Math.PI);
 
                     
-                    for(var i = 0; i < rayIntersections.length; i++){
-                        if(rayIntersections[i].distance <= playerDistance){
+                    let ay = Math.sin(edgeAngle1);
+                    let ax = Math.cos(edgeAngle1);
+
+                    let cy = Math.sin(edgeAngle2);
+                    let cx = Math.cos(edgeAngle2);
+                    let AxC = ay*cx - ax*cy;
+                    let CxA = cy*ax - cx*ay;
+
+                    
+
+
+
+                    //these have bad names
+                    let a1y = Math.sin(edgeAngle1);
+                    let a1x = Math.cos(edgeAngle1);
+
+                    let c1y = Math.sin(edgeAngle2);
+                    let c1x = Math.cos(edgeAngle2);
+                    let AxC1 = a1y*cx - a1x*c1y;
+                    let CxA1 = c1y*ax - c1x*a1y;
+                    
+                    
+                    let b1y = ay;
+                    let b1x = ax;
+                    let AxB1 = a1y*b1x - a1x*b1y;
+                    let CxB1 = c1y*b1x - c1x*b1y;
+
+                    let b2y = cy;
+                    let b2x = cx;
+                    let AxB2 = a1y*b2x - a1x*b2y;
+                    let CxB2 = c1y*b2x - c1x*b2y;
+                    
+
+                    //test if the edges of the sprite are within the view cone for performance
+                    if(!((AxB1 * AxC1 >= 0 && CxB1 * CxA1 >= 0) || AxB2 * AxC1 >= 0 && CxB2 * CxA1 >= 0)){
+                        return false;
+                    }
+                    
+                    for(const pixel in rayIntersections){
+                        
+                        if(rayIntersections[pixel].distance <= playerDistance){
                             continue;
                         }else{
                             //ray touches sprite
-                        
-                            var angle1 = edgeAngle1 - Math.PI;
-                            var angle2 = edgeAngle2 - Math.PI;
 
-                            if((rayIntersections[i].angle <= angle2 && rayIntersections[i].angle >= angle1)){
+                            let by = Math.sin(rayIntersections[pixel].angle);
+                            let bx = Math.cos(rayIntersections[pixel].angle);
+
+                            let AxB = ay*bx - ax*by;
+                            let CxB = cy*bx - cx*by;
+                            
+                            //vector b lies within a and b
+                            if(AxB * AxC >= 0 && CxB * CxA >= 0){
+                                let coord = edgeAngle1 - edgeAngle2;
+                                let angle = edgeAngle1 - rayIntersections[pixel].angle;
+                                let percent = angle/coord;
+
+                                let diffAngle = rayIntersections[pixel].angle - gridAngle
                                 
+                                let segment = Math.tan(diffAngle)*playerDistance;
+
+                                let linesegment = (segment + this.width/2)/this.width
+
                                 spriteRenders.push(
                                     {
-                                        pixel:i,
+                                        pixel:pixel,
                                         distance: playerDistance,
                                         texture: "strawb",
-                                        textureCoordinate : Math.abs(Math.floor(64 * ((edgeAngle1 - Math.PI) - rayIntersections[i].angle) / edgeAngle1 - edgeAngle2)),
+                                        textureCoordinate : Math.abs(Math.floor(64 * linesegment)),
                                     }
                                 )
                             }
@@ -413,9 +466,7 @@
             hoof = new Hoof(ctxCamera);
 
             player = new Player(ctx, 256, 256);
-            rayIntersections = [
-
-            ];
+            rayIntersections = {};
 
             function drawMouse(ctx){
                 ctx.save()
@@ -463,9 +514,10 @@
                     if(spriteRenders[i]){
                         let height =  256 * (1/spriteRenders[i].distance);
                         let yOffset = (ctxCamera.canvas.height - height)/2;
+                        /* ctxCamera.fillStyle = "white";
+                        ctxCamera.fillRect(spriteRenders[i].pixel*width, yOffset, width, height) */
                         ctxCamera.drawImage(textureList.imageList[spriteRenders[i].texture], spriteRenders[i].textureCoordinate, 0, 1, textureList.imageList[spriteRenders[i].texture].height, spriteRenders[i].pixel*width, yOffset, width, height)
-                        ctxCamera.fillStyle = "red";
-                        ctxCamera.fillRect(spriteRenders[i].pixel*width, yOffset, width, height)
+                        
                     }
                 }
                 
@@ -576,7 +628,7 @@
                 let dy = player.directionY;
                 let viewAngle = Math.atan2(dy, dx);
                 
-                for(var i = -1 * halfRes; i < halfRes; i++){
+                for(var i = -1*halfRes; i <= halfRes; i++){
                     let offset = (Math.PI/2)/resolution;
                     let newAngle = viewAngle + offset*i;
                     let intersect = castRay(newAngle, startCellX, startCellY);
@@ -661,15 +713,21 @@
             canvas.addEventListener("contextmenu",function(e){
                 e.preventDefault();
                 return false;
-            })
+            });
+
+            function createStrawb(x,y){
+                strawb  = new Sprite(ctx, textureList['strawb'], x, y, 0, gridSize, resolution);
+                return strawb;
+            }
+            
             
             textureList.load("img/wall.png", 'wall');
             textureList.load("img/hoof.png", 'hoof');
             textureList.load("img/strawb.png", 'strawb');
             textureList.onload(function(){
                 console.log("loaded");
-
-                strawb  = new Sprite(ctx, textureList['strawb'], 50, 50, 0, gridSize, resolution);
+                
+                spriteList.push(createStrawb(12*gridSize,12*gridSize));
                 
                 play(0);
             });
