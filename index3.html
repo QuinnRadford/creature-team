@@ -303,6 +303,11 @@
                     let xRelative3 = (player.xPos/gridSize) - edge2x;
                     let edgeAngle2 = Math.atan2(yRelative3, xRelative3);
 
+                    //edges outside the players view cone
+                    if(!((edgeAngle1 - Math.PI) >= (playerAngle - Math.PI/4) && (edgeAngle1 - Math.PI) <= (playerAngle + Math.PI/4)) && !((edgeAngle2 - Math.PI) >= (playerAngle - Math.PI/4) && (edgeAngle2 - Math.PI) <= (playerAngle + Math.PI/4))){
+                        return false;
+                    }
+
                     
                     for(var i = 0; i < rayIntersections.length; i++){
                         if(rayIntersections[i].distance <= playerDistance){
