@@ -104,8 +104,31 @@
                 }
             }
 
-            var textureList = new ImageLoader();
+            class SoundLoader{
+                promiseList = [];
+                soundList = {};
+                constructor(){
 
+                }
+
+                load(url, name){
+                    let soundLoader = this;
+                    this.promiseList.push(new Promise(function(resolve,reject){
+                        soundLoader.soundList[name] = new Audio();
+                        soundLoader.soundList[name].oncanplaythrough = function(){return resolve();}
+                        soundLoader.soundList[name].onerror = function(){return reject();}
+                        soundLoader.soundList[name].src = url;
+                    }));
+                }
+
+                onload(callback){
+                    Promise.all(this.promiseList).then(callback);
+                }
+            }
+
+            var textureLoader = new ImageLoader();
+            var soundLoader = new SoundLoader();
+            
             //init grid
             var gridSquares = [];
             for(var i = 0; i < ctx.canvas.width/gridSize; i++){
@@ -157,6 +180,8 @@
                 }
             }
 
+
+            //player first person
             class Hoof{
                 isWalking = false;
                 isAnimating = false;
@@ -171,6 +196,9 @@
                 animateMode = 1;
                 width = 69;
                 height = 240;
+                lastStep = 0;
+                lastStepType = 1;
+
                 constructor(ctx){
                     this.ctx = ctx;
                     this.screenY = ctx.canvas.height - this.screenY;
@@ -180,10 +208,25 @@
                     this.bottomLimit += this.screenY;
 
                 }
+
+                playWalkSound(){
+                    let now = performance.now();
+                    if(now - this.lastStep > 400){
+                        if(this.lastStepType == 1){
+                            this.lastStepType = 0;
+                            soundLoader.soundList['step1'].play();
+                        }else{
+                            this.lastStepType = 1;
+                            soundLoader.soundList['step2'].play();
+                        }
+                        this.lastStep = now;
+                    }
+                }
                 animate(deltaT){
                     if(keyInputs.s || keyInputs.w){
                         this.isWalking = true;
                         this.isAnimating = true;
+                        if(this.lastStep == 0)soundLoader.soundList['ambiance'].play();
                     }else{
                         this.isWalking = false;
                     }
@@ -209,11 +252,15 @@
                         }
 
                     }
+
+                    if(this.isWalking){
+                        this.playWalkSound();
+                    }
                     
                 }
 
                 draw(){
-                    this.ctx.drawImage(textureList.imageList['hoof'], Math.round(this.screenX), Math.round(this.screenY), this.width, this.height);
+                    this.ctx.drawImage(textureLoader.imageList['hoof'], Math.round(this.screenX), Math.round(this.screenY), this.width, this.height);
                 }
 
             }
@@ -495,6 +542,7 @@
                     if(this.oldScore < strawbCount){
                         this.oldScore = strawbCount;
                         this.setBlush();
+                        soundLoader.soundList['bleat'].play();
                     }
                 }
 
@@ -613,6 +661,7 @@
                 rSpeed = 200;
                 directionX = 0;
                 directionY = 0;
+
                 constructor(ctx, xPos, yPos){
                     this.ctx = ctx;
                     this.xPos = xPos;
@@ -747,7 +796,7 @@
                     if(rayIntersections[i] && rayIntersections[i].intersects){
                         let height =  256 * (1/rayIntersections[i].distance);
                         let yOffset = (ctxCamera.canvas.height - height)/2;
-                        ctxCamera.drawImage(textureList.imageList[rayIntersections[i].texture], rayIntersections[i].textureCoordinate, 0, 1, textureList.imageList[rayIntersections[i].texture].height, i*width, yOffset, width, height)
+                        ctxCamera.drawImage(textureLoader.imageList[rayIntersections[i].texture], rayIntersections[i].textureCoordinate, 0, 1, textureLoader.imageList[rayIntersections[i].texture].height, i*width, yOffset, width, height)
                     }
                 }
 
@@ -1004,49 +1053,55 @@
             }
 
             function createStrawb(x,y){
-                strawb  = new StrawberrySprite(ctx, textureList.imageList['strawb'], x, y, 0, gridSize, resolution);
+                strawb  = new StrawberrySprite(ctx, textureLoader.imageList['strawb'], x, y, 0, gridSize, resolution);
                 return strawb;
             }
-            
-            
-            textureList.load("img/wall.png", 'wall');
-            textureList.load("img/hoof.png", 'hoof');
-            textureList.load("img/strawb.png", 'strawb');
-            textureList.load("img/deer-face.png", 'face');
-            textureList.load("img/deer-face-blink.png", 'face-blink');
-            textureList.load("img/deer-face-closed.png", 'face-close');
-            textureList.load("img/deer-blush.png", 'face-blush');
-            textureList.load("img/flower.png", 'flower');
-            textureList.onload(function(){
-                console.log("loaded");
-                let faceImg = textureList.imageList['face'];
-                let faceBlink = textureList.imageList['face-blink'];
-                let faceClose = textureList.imageList['face-close'];
-                let faceBlush = textureList.imageList['face-blush'];
-                let flowerImg = textureList.imageList['flower'];
-                let flowerCount = Math.round(Math.random()*20) + 10;
-                let strawbCount = Math.round(Math.random()*15) + 5;
+            soundLoader.load("sound/ambiance.mp3", "ambiance");
+            soundLoader.soundList['ambiance'].volume = 0.4;
+            soundLoader.soundList['ambiance'].loop = true;
+            soundLoader.load("sound/bleat.mp3", "bleat");
+            soundLoader.load("sound/step1.mp3", "step1");
+            soundLoader.soundList['step1'].volume = 0.3;
+            soundLoader.load("sound/step2.mp3", "step2");
+            soundLoader.soundList['step2'].volume = 0.3;
+            soundLoader.onload(function(){
+                textureLoader.load("img/wall.png", 'wall');
+                textureLoader.load("img/hoof.png", 'hoof');
+                textureLoader.load("img/strawb.png", 'strawb');
+                textureLoader.load("img/deer-face.png", 'face');
+                textureLoader.load("img/deer-face-blink.png", 'face-blink');
+                textureLoader.load("img/deer-face-closed.png", 'face-close');
+                textureLoader.load("img/deer-blush.png", 'face-blush');
+                textureLoader.load("img/flower.png", 'flower');
+                textureLoader.onload(function(){
+                    console.log("loaded");
+                    let faceImg = textureLoader.imageList['face'];
+                    let faceBlink = textureLoader.imageList['face-blink'];
+                    let faceClose = textureLoader.imageList['face-close'];
+                    let faceBlush = textureLoader.imageList['face-blush'];
+                    let flowerImg = textureLoader.imageList['flower'];
+                    let flowerCount = Math.round(Math.random()*20) + 10;
+                    let strawbCount = Math.round(Math.random()*15) + 5;
 
-                for(var i = 0; i < flowerCount; i++){
-                    let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
-                    let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                    spriteList.push(new Sprite(ctx, flowerImg, thisSpriteX, thisSpriteY, 0, gridSize, resolution));
-                }
+                    for(var i = 0; i < flowerCount; i++){
+                        let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
+                        let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
+                        spriteList.push(new Sprite(ctx, flowerImg, thisSpriteX, thisSpriteY, 0, gridSize, resolution));
+                    }
 
-                
+                    
 
-                for(var i = 0; i < strawbCount; i++){
-                    let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
-                    let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                    spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
-                }
+                    for(var i = 0; i < strawbCount; i++){
+                        let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
+                        let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
+                        spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
+                    }
 
-                interface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
+                    interface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
 
-                
-                play(0);
+                    play(0);
+                });
             });
-            
 
         </script>
     </body>
