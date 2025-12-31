@@ -72,8 +72,9 @@
             var spriteRenders = [];
 
             var strawbCount = 0;
-
-            var interface;
+            var sceneGoal = 0;
+            var sceneScore = 0;
+            var userInterface;
 
             var mouseInput = {
                 x:0,
@@ -442,6 +443,42 @@
                 }
             }
 
+            
+
+            class Teleporter extends Sprite{
+                lastSound = 0;
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                }
+
+                draw(player){
+                    if(!this.active) return true;
+                    this.ctx.save();
+                    this.ctx.fillStyle = "yellow";
+                    this.ctx.beginPath();
+                    this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 6, 0, 2*Math.PI);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                isVisible(player, rayIntersections){
+                    if(this.active){
+                        let yRelative = ( this.yPos - player.yPos)/gridSize;
+                        let xRelative = ( this.xPos - player.xPos)/gridSize;
+                        let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                        if(playerDistance < 0.2){
+                            if(performance.now() - this.lastSound > 1000 && (keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
+                                soundLoader.soundList['bush'].play();
+                                this.lastSound = performance.now();
+                                userInterface.startSceneChange();
+                            }
+                            
+                        }
+                    }
+                    super.isVisible(player, rayIntersections);
+                }
+            }
+
             class UserInterface{
                 /** @type {CanvasRenderingContext2D} */
                 ctx;
@@ -460,6 +497,8 @@
                 oldScore = 0;
                 blush = false;
                 blushStart = 0;
+                effectStart = 0;
+                effectActive = false;
 
                 constructor(ctx, faceImg, blink, closed, blush){
                     this.ctx = ctx;
@@ -504,6 +543,9 @@
                         this.oldScore = strawbCount;
                         this.setBlush();
                         soundLoader.soundList['bleat'].play();
+                        if(sceneScore == sceneGoal){
+                            teleporter.active = true;
+                        }
                     }
                 }
 
@@ -526,6 +568,34 @@
                     this.blush = true;
                     this.blinking = true;
                     this.blushStart = performance.now();
+                }
+                startSceneChange(){
+                    this.effectActive = true;
+                    this.effectStart = performance.now();
+                }
+                sceneChange(deltaT, player){
+                    let changeDuration = 1000;
+                    let now = performance.now();
+                    let alpha = (now - this.effectStart)/changeDuration;
+                    if(alpha > 1){
+                        alpha = 1;
+                        if(now - this.effectStart > 2000){
+                            generateWorld();
+                            player.xPos = 256;
+                            player.yPos = 256;
+                            this.effectStart = 0;
+                            this.effectActive = 0;
+                        }
+                    }
+                    this.ctx.save();
+                    this.ctx.fillStyle = "rgba(0,0,0,"+alpha.toFixed(2)+")";
+                    this.ctx.fillRect(0,0,this.ctx.canvas.width, this.ctx.canvas.height);
+                    this.ctx.fillStyle = "rgba(255,255,255,"+alpha.toFixed(2)+")";
+                    this.ctx.textAlign = "center";
+                    this.ctx.font = "bold 32px sans-serif"
+                    this.ctx.fillText("Zzzz...",255,255);
+                    this.ctx.restore();
+
                 }
 
                 _drawFaceFrame(){
@@ -578,9 +648,12 @@
                     this.ctx.restore();
                 }
 
-                draw(){
+                draw(deltaT, player){
                     this._drawFaceFrame();
                     this._drawScore();
+                    if(this.effectActive){
+                        this.sceneChange(deltaT, player);
+                    }
                 }
             }
 
@@ -598,6 +671,7 @@
                         let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
                         if(playerDistance < 0.3){
                             strawbCount += 1;
+                            sceneScore += 1;
                             this.active = false;
                         }
                     }
@@ -798,8 +872,8 @@
                 hoof.animate(deltaT);
                 hoof.draw();
 
-                interface.update();
-                interface.draw();
+                userInterface.update();
+                userInterface.draw(deltaT, player);
                 
 
                 window.requestAnimationFrame(function(){
@@ -1017,6 +1091,33 @@
                 strawb  = new StrawberrySprite(ctx, textureLoader.imageList['strawb'], x, y, 0, gridSize, resolution);
                 return strawb;
             }
+            var teleporter;
+            function generateWorld(){
+                spriteList = [];
+                sceneScore = 0;
+                teleporter = new Teleporter(ctx, textureLoader.imageList['bed'], 256, 256, 0, gridSize, resolution);
+                teleporter.active = false;
+                spriteList.push(teleporter);
+
+                let flowerCount = Math.round(Math.random()*20) + 10;
+                let strawbSpawnCount = Math.round(Math.random()*15) + 5;
+                sceneGoal = strawbSpawnCount;
+                for(var i = 0; i < flowerCount; i++){
+                    let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
+                    let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
+                    spriteList.push(new Grass(ctx, textureLoader.imageList['flower'], thisSpriteX, thisSpriteY, 0, gridSize, resolution));
+                }
+
+                for(var i = 0; i < strawbSpawnCount; i++){
+                    let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
+                    let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
+                    spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
+                }
+
+            }
+
+            
+
             soundLoader.load("sound/bush.mp3", "bush");
             soundLoader.soundList['bush'].volume = 0.4;
             soundLoader.load("sound/ambiance.mp3", "ambiance");
@@ -1028,6 +1129,7 @@
             soundLoader.load("sound/step2.mp3", "step2");
             soundLoader.soundList['step2'].volume = 0.3;
             soundLoader.onload(function(){
+                textureLoader.load("img/bed.png", 'bed');
                 textureLoader.load("img/wall.png", 'wall');
                 textureLoader.load("img/hoof.png", 'hoof');
                 textureLoader.load("img/strawb.png", 'strawb');
@@ -1042,25 +1144,10 @@
                     let faceBlink = textureLoader.imageList['face-blink'];
                     let faceClose = textureLoader.imageList['face-close'];
                     let faceBlush = textureLoader.imageList['face-blush'];
-                    let flowerImg = textureLoader.imageList['flower'];
-                    let flowerCount = Math.round(Math.random()*20) + 10;
-                    let strawbCount = Math.round(Math.random()*15) + 5;
-
-                    for(var i = 0; i < flowerCount; i++){
-                        let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
-                        let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                        spriteList.push(new Grass(ctx, flowerImg, thisSpriteX, thisSpriteY, 0, gridSize, resolution));
-                    }
-
                     
-
-                    for(var i = 0; i < strawbCount; i++){
-                        let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
-                        let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                        spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
-                    }
-
-                    interface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
+                    userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
+                    generateWorld();
+                    
 
                     play(0);
                 });
