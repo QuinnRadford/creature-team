@@ -45,6 +45,7 @@
             <div class="key" data-key="s">S</div>
             <div class="key" data-key="d">D</div>
         </div>
+        <input id="map_code" value=""/><button id="load_map_btn">load</button>
         <script>
             const canvasCamera = document.getElementById('camera');
             /** @type {CanvasRenderingContext2D} */
@@ -75,6 +76,14 @@
             var sceneGoal = 0;
             var sceneScore = 0;
             var userInterface;
+            var levelCounter = 0;
+
+            var level_1 = "////////(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !////////";
+            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((    "!/.\',//##("" ( !!("" ( !!("" (//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////';
+            var mapLevels = [
+                level_1,
+                level_2
+            ];
 
             var mouseInput = {
                 x:0,
@@ -580,6 +589,9 @@
                     if(alpha > 1){
                         alpha = 1;
                         if(now - this.effectStart > 2000){
+                            levelCounter++;
+                            if(levelCounter >= mapLevels.length) levelCounter = 0;
+                            mapFromCode(mapLevels[levelCounter]);
                             generateWorld();
                             player.xPos = 256;
                             player.yPos = 256;
@@ -596,6 +608,26 @@
                     this.ctx.fillText("Zzzz...",255,255);
                     this.ctx.restore();
 
+                }
+
+                _drawReadyNest(){
+                    this.ctx.save();
+                    this._drawInsetBox(this.ctx.canvas.width/2 - 100,50-this.ctx.canvas.height,200, 50);
+                    this.ctx.fillStyle = "white";
+                    this.ctx.textAlign = "center";
+                    this.ctx.font = "bold 20px sans-serif"
+                    this.ctx.fillText("Ready to nest",255,32);
+                    this.ctx.restore();
+                }
+
+                _drawRemaining(){
+                    this.ctx.save();
+                    this._drawInsetBox(0,0-this.faceSize, this.faceSize, 25);
+                    this.ctx.fillStyle = "grey";
+                    this.ctx.textAlign = "center";
+                    this.ctx.font = "12px sans-serif"
+                    this.ctx.fillText((sceneGoal - sceneScore)+" to go",this.faceSize/2,this.ctx.canvas.height - this.faceSize - 8);
+                    this.ctx.restore();
                 }
 
                 _drawFaceFrame(){
@@ -651,6 +683,10 @@
                 draw(deltaT, player){
                     this._drawFaceFrame();
                     this._drawScore();
+                    this._drawRemaining()
+                    if(sceneScore == sceneGoal){
+                        this._drawReadyNest();
+                    }
                     if(this.effectActive){
                         this.sceneChange(deltaT, player);
                     }
@@ -771,7 +807,7 @@
 
             function drawMouse(ctx){
                 ctx.save()
-                ctx.fillStyle = "red";
+                ctx.fillStyle = "teal";
                 ctx.beginPath();
                 ctx.arc(Math.round(mouseInput.x), Math.round(mouseInput.y), 4, 0, 2*Math.PI);
                 ctx.fill();
@@ -791,7 +827,9 @@
                             }
                         }
                     }
+                    generateMapCode();
                 }
+                
             }
 
             function compareDistance(a,b){
@@ -1007,7 +1045,59 @@
                 }
                 
             }
+            generateMapCode();
+            function generateMapCode(){
+                let binaryString = '';
+                let charIndex = 0;
+                let thisChar = '';
+                for(var i = 0; i < gridSquares.length; i++){
+                    for(var ii = 0; ii < gridSquares[i].length; ii++){
+                        charIndex++;
+                        if(gridSquares[i][ii]){
+                            thisChar += "1";
+                        }else{
+                            thisChar += "0";
+                        }
+                        if(charIndex % 4 == 0){
+                            charIndex = 0;
+                            
+                            binaryString += String.fromCharCode(32 + parseInt(thisChar,2));
+                            thisChar = "";
+                        }
+                        
+                        
+                    }
+                }
 
+                
+                let map_code = document.getElementById("map_code");
+                map_code.value = binaryString;
+            }
+
+            function mapFromCode(code){
+                let binaryString = '';
+                for(var c = 0; c < code.length; c++){
+                    binaryString += (code.codePointAt(c) - 32).toString(2).padStart(4,"0");
+                }
+                let cellIndex = 0;
+                for(var i = 0; i < gridSquares.length; i++){
+                    for(var ii = 0; ii < gridSquares[i].length; ii++){
+                        
+                        if(binaryString.substr(cellIndex,1) == "1"){
+                            gridSquares[i][ii] = true;
+                        }else{
+                            gridSquares[i][ii] = false;
+                        }
+                        cellIndex++;
+                    }
+                }
+            }
+
+            load_map_btn.addEventListener("click", function(e){
+                e.preventDefault();
+                mapFromCode(map_code.value);
+                return false;
+            })
             
             document.addEventListener("keydown",function(e){
                 keyInputs[e.key] = true;
@@ -1105,13 +1195,24 @@
                 for(var i = 0; i < flowerCount; i++){
                     let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
                     let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                    spriteList.push(new Grass(ctx, textureLoader.imageList['flower'], thisSpriteX, thisSpriteY, 0, gridSize, resolution));
+                    if(!gridSquares[Math.floor(thisSpriteX/gridSize)][Math.floor(thisSpriteY/gridSize)]){
+                        spriteList.push(new Grass(ctx, textureLoader.imageList['flower'], thisSpriteX, thisSpriteY, 0, gridSize, resolution));
+                    }else{
+                        i--; //try again
+                        console.log("try again")
+                    }
                 }
 
                 for(var i = 0; i < strawbSpawnCount; i++){
                     let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
                     let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                    spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
+                    if(!gridSquares[Math.floor(thisSpriteX/gridSize)][Math.floor(thisSpriteY/gridSize)]){
+                        spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
+                    }else{
+                        i--; //try again
+                        console.log("try again")
+                    }
+                    
                 }
 
             }
