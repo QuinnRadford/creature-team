@@ -265,6 +265,8 @@
 
             }
 
+            
+
             class Sprite{
                 /** @type {CanvasRenderingContext2D} */
                 ctx;
@@ -297,69 +299,6 @@
                     this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
                     this.ctx.fill();
                     this.ctx.restore();
-
-                    /* this.ctx.save();
-                    let yRelative = (player.yPos - this.yPos)/gridSize;
-                    let xRelative = (player.xPos - this.xPos)/gridSize;
-
-
-                    let gridAngle = Math.atan2(yRelative, xRelative);
-
-                    let playerAngle = Math.atan2(player.directionY, player.directionX);
-
-                    
-                    let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
-                    let edgeDistance = Math.sqrt(Math.pow(playerDistance,2) + Math.pow(this.width/2,2));
-                    
-                    let edgeAngle = Math.atan2(playerDistance, this.width/2);
-
-
-                    let lineAngle = (gridAngle - Math.PI/2);
-                    let linedx = Math.cos(lineAngle);
-                    let linedy = Math.sin(lineAngle);
-                    
-                    let edge1x = this.xPos/gridSize + (linedx*this.width/2);
-                    let edge1y = this.yPos/gridSize + (linedy*this.width/2);
-
-                    let edge2x = this.xPos/gridSize - (linedx*this.width/2);
-                    let edge2y = this.yPos/gridSize - (linedy*this.width/2);
-
-                    this.ctx.beginPath();
-                    this.ctx.strokeStyle = "orange";
-                    this.ctx.moveTo(edge1x*gridSize, edge1y*gridSize);
-                    this.ctx.lineTo(edge2x * gridSize, edge2y * gridSize);
-                    this.ctx.stroke();
-
-                    this.ctx.fillStyle = "green";
-                    this.ctx.beginPath();
-                    this.ctx.arc(Math.round(edge1x*gridSize), Math.round(edge1y*gridSize), 2, 0, 2*Math.PI);
-                    this.ctx.fill();
-                    
-                    let yRelative2 = (player.yPos/gridSize) - edge1y;
-                    let xRelative2 = (player.xPos/gridSize) - edge1x;
-                    let edgeAngle1 = Math.atan2(yRelative2, xRelative2);
-
-                    let yRelative3 = (player.yPos/gridSize) - edge2y;
-                    let xRelative3 = (player.xPos/gridSize) - edge2x;
-                    let edgeAngle2 = Math.atan2(yRelative3, xRelative3);
-
-                    let e1dX = Math.cos(edgeAngle1);
-                    let e1dY = Math.sin(edgeAngle1);
-                    let e2dX = Math.cos(edgeAngle2);
-                    let e2dY = Math.sin(edgeAngle2);
-
-                    this.ctx.beginPath();
-                    this.ctx.strokeStyle = "green";
-                    this.ctx.moveTo(Math.round(edge1x*gridSize), Math.round(edge1y*gridSize));
-                    this.ctx.lineTo(Math.round(edge1x*gridSize + (edgeDistance*e1dX*gridSize)), Math.round(edge1y*gridSize + (edgeDistance*e1dY*gridSize)));
-                    this.ctx.stroke();
-
-                    this.ctx.strokeStyle = "yellow";
-                    this.ctx.moveTo(Math.round(edge2x*gridSize), Math.round(edge2y*gridSize));
-                    this.ctx.lineTo(Math.round(edge2x*gridSize + (edgeDistance*e2dX*gridSize)), Math.round(edge2y*gridSize + (edgeDistance*e2dY*gridSize)));
-                    this.ctx.stroke();
-
-                    this.ctx.restore(); */
                 }
 
                 isVisible(player, rayIntersections){
@@ -478,6 +417,28 @@
                         }
                     }
 
+                }
+            }
+            
+            class Grass extends Sprite{
+                lastSound = 0;
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                }
+
+                isVisible(player, rayIntersections){
+                    
+                    let yRelative = ( this.yPos - player.yPos)/gridSize;
+                    let xRelative = ( this.xPos - player.xPos)/gridSize;
+                    let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                    if(playerDistance < 0.3){
+                        if(performance.now() - this.lastSound > 1000 && (keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
+                            soundLoader.soundList['bush'].play();
+                            this.lastSound = performance.now();
+                        }
+                        
+                    }
+                    super.isVisible(player, rayIntersections);
                 }
             }
 
@@ -1056,6 +1017,8 @@
                 strawb  = new StrawberrySprite(ctx, textureLoader.imageList['strawb'], x, y, 0, gridSize, resolution);
                 return strawb;
             }
+            soundLoader.load("sound/bush.mp3", "bush");
+            soundLoader.soundList['bush'].volume = 0.4;
             soundLoader.load("sound/ambiance.mp3", "ambiance");
             soundLoader.soundList['ambiance'].volume = 0.4;
             soundLoader.soundList['ambiance'].loop = true;
@@ -1086,7 +1049,7 @@
                     for(var i = 0; i < flowerCount; i++){
                         let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
                         let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                        spriteList.push(new Sprite(ctx, flowerImg, thisSpriteX, thisSpriteY, 0, gridSize, resolution));
+                        spriteList.push(new Grass(ctx, flowerImg, thisSpriteX, thisSpriteY, 0, gridSize, resolution));
                     }
 
                     
