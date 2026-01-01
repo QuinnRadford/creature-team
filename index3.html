@@ -67,6 +67,8 @@
                 s:false,
                 a:false,
                 d:false,
+                m:false,
+                Shift:false
             };
             var strawb;
             var hoof;
@@ -81,21 +83,30 @@
             var sceneGoal = 0;
             var sceneScore = 0;
             var userInterface;
+            var keyCount = 0;
             var levelCounter = 0;
-            var seenSquares = [];
+            var dataSquares = [];
+            var lastMouseAction = {
+                button:-1,
+                gridX:0,
+                gridY:0
+            };
 
-            var level_1 = "////////(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !////////";
-            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((    "!/.\',//##("" ( !!("" ( !!("" (//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////';
+            var level_1 = "/////////(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #////.////.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////!-/#8.";
+            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9!6="42#<<';
+            var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////"0-"0*"0\'"-:!33!=5##=#-7#,/#8<#<)"6\'#=%#=/#0(';
             var mapLevels = [
                 level_1,
-                level_2
+                level_2,
+                level_3
             ];
 
             var mouseInput = {
                 x:0,
                 y:0,
                 click:false,
-                altClick:false
+                altClick:false,
+                middleClick:false
             }
 
             class ImageLoader{
@@ -156,15 +167,19 @@
                 }
             }
 
-            mapFromCode(level_1);
 
             function generateSeenGrid(){
                 for(var i = 0; i < gridSquares.length; i++){
-                    seenSquares[i] = [];
+                    dataSquares[i] = [];
                     for(var ii = 0; ii < gridSquares[i].length; ii++){
-                        seenSquares[i][ii] = false;
+                        dataSquares[i][ii] = {
+                            seen:false,
+                            blocked:false,
+                            blockedBy:null
+                        };
                     }
                 }
+
             }
 
 
@@ -173,7 +188,7 @@
                 ctx.fillStyle = 'blue';
                 for(var i = 0; i < gridSquares.length; i++){
                     for(var ii = 0; ii < gridSquares[i].length; ii++){
-                        if(gridSquares[i][ii] && (seenSquares[i][ii] || MAP_EDIT_MODE )){
+                        if(gridSquares[i][ii] && (dataSquares[i][ii].seen || MAP_EDIT_MODE )){
                             ctx.fillRect(i*gridSize,ii*gridSize,gridSize,gridSize);
                         }
                     }
@@ -307,6 +322,7 @@
                 distance;
                 active = true;
                 seen = false;
+                delete = false;
 
                 constructor(ctx, image, xPos, yPos, zPos, width, height){
                     this.ctx = ctx;
@@ -318,15 +334,11 @@
                     this.width = width/gridSize;
                     this.height = height;
                 }
-                
+                deleteSprite(){
+                    this.delete = true;
+                }
                 draw(player){
                     if(!this.active) return true;
-/*                     this.ctx.save();
-                    this.ctx.fillStyle = "orange";
-                    this.ctx.beginPath();
-                    this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
-                    this.ctx.fill();
-                    this.ctx.restore(); */
                 }
 
                 isVisible(player, rayIntersections){
@@ -421,7 +433,7 @@
                             let AxB = ay*bx - ax*by;
                             let CxB = cy*bx - cx*by;
                             
-                            //vector b lies within a and b
+                            //vector b lies within a and c
                             if(AxB * AxC >= 0 && CxB * CxA >= 0){
                                 let coord = edgeAngle1 - edgeAngle2;
                                 let angle = edgeAngle1 - rayIntersections[pixel].angle;
@@ -433,14 +445,46 @@
 
                                 let linesegment = (segment + this.width/2)/this.width
                                 this.seen = true;
-                                spriteRenders.push(
-                                    {
-                                        pixel:pixel,
-                                        distance: playerDistance,
-                                        texture: this.image,
-                                        textureCoordinate : Math.abs(Math.floor(this.image.width * linesegment)),
+
+                                if(this.direction){ //for wall like sprites
+                                    let intersect = 0;
+                                    let testPos;
+                                    if(this.direction == 'x'){
+                                        let dx = Math.cos(rayIntersections[pixel].angle);
+                                        let dy = Math.sin(rayIntersections[pixel].angle);
+                                        intersect = dy*(xRelative/dx);
+                                        testPos = yRelative;
+                                        playerDistance = Math.sqrt(Math.pow(intersect, 2) + Math.pow(xRelative, 2));
+                                    }else{
+                                        let dx = Math.cos(rayIntersections[pixel].angle);
+                                        let dy = Math.sin(rayIntersections[pixel].angle);
+                                        intersect = dx*(yRelative/dy);
+                                        testPos = xRelative;
+                                        playerDistance = Math.sqrt(Math.pow(intersect, 2) + Math.pow(yRelative, 2));
                                     }
-                                )
+                                    if(Math.abs(intersect - testPos) <= 1){
+                                        spriteRenders.push(
+                                            {
+                                                pixel:pixel,
+                                                distance: playerDistance,
+                                                texture: this.image,
+                                                textureCoordinate : Math.abs(Math.floor(this.image.width * Math.abs(linesegment))),
+                                            }
+                                        );
+                                    }
+
+                                }else{ //for always facing player sprites
+                                    spriteRenders.push(
+                                        {
+                                            pixel:pixel,
+                                            distance: playerDistance,
+                                            texture: this.image,
+                                            textureCoordinate : Math.abs(Math.floor(this.image.width * linesegment)),
+                                        }
+                                    );
+                                }
+
+                                
                             }
                         }
                     }
@@ -743,7 +787,12 @@
                     this.ctx.lineTo(arcX,arcY);
                     this.ctx.fill();
                     this.ctx.restore();
+                }
 
+                _drawKeys(){
+                    for(var i = 0; i < keyCount; i++){
+                        this.ctx.drawImage(textureLoader.imageList['key'], this.faceSize - 40 + (i*4), this.ctx.canvas.height - 60 + (i*4), 40,40);
+                    }
                 }
 
                 draw(deltaT, player){
@@ -753,6 +802,9 @@
                     this._nearestArrow(player);
                     if(sceneScore == sceneGoal){
                         this._drawReadyNest();
+                    }
+                    if(keyCount > 0){
+                        this._drawKeys();
                     }
                     if(this.effectActive){
                         this.sceneChange(deltaT, player);
@@ -792,6 +844,112 @@
                     }
                 }
             }
+
+            class KeySprite extends Sprite{
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                    
+                    if(this.active){
+                        let yRelative = ( this.yPos - player.yPos)/gridSize;
+                        let xRelative = ( this.xPos - player.xPos)/gridSize;
+                        let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                        if(playerDistance < 0.3){
+                            keyCount += 1;
+                            this.active = false;
+                            soundLoader.soundList['key'].play();
+                        }
+                    }
+                }
+
+                draw(player){
+                    if(!this.active) return true;
+                    if(this.seen || MAP_EDIT_MODE){
+                        this.ctx.save();
+                        this.ctx.fillStyle = "gold";
+                        this.ctx.beginPath();
+                        this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                        this.ctx.fill();
+                        this.ctx.restore();
+                    }
+                }
+            }
+
+            class DoorSprite extends Sprite{
+                direction;
+                open = false;
+                openImg;
+                closedImg;
+                constructor(ctx, openImg, closedImg, xPos, yPos, width, height, direction){
+                    super(ctx, closedImg, xPos, yPos, 0, width, height);
+                    this.direction = direction;
+                    this.openImg = openImg;
+                    this.closedImg = closedImg;
+                    //block own square
+                    dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = true;
+                    dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blockedBy = this;
+                }
+
+                deleteSprite(){
+                    let gridX = Math.floor(this.xPos/gridSize);
+                    let gridY = Math.floor(this.yPos/gridSize);
+                    this.active = false;
+                    dataSquares[gridX][gridY].blocked = false;
+                    dataSquares[gridX][gridY].blockedBy = null;
+                    super.deleteSprite()
+                }
+                setOpen(){
+                    this.open = true;
+                    dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = false;
+                    this.image = this.openImg;
+                }
+
+                setClosed(){
+                    this.open = false;
+                    dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = true;
+                    this.image = this.closedImg;
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                    let yRelative = ( this.yPos - player.yPos)/gridSize;
+                    let xRelative = ( this.xPos - player.xPos)/gridSize;
+                    let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                    if(playerDistance < 0.6 && keyCount > 0 && !this.open){
+                        keyCount -= 1;
+                        this.setOpen();
+                        soundLoader.soundList['unlock'].play();
+                        soundLoader.soundList['bleat'].play();
+                    }
+                }
+
+                
+
+                draw(player){
+                    if(!this.active) return false;
+                    if(this.seen || MAP_EDIT_MODE){
+                        this.ctx.save();
+                        this.ctx.strokeStyle = "green";
+                        this.ctx.lineWidth = 4;
+                        this.ctx.beginPath();
+                        if(this.direction == 'x'){ //blocking the x direction
+                            
+                            this.ctx.moveTo(this.xPos, this.yPos - gridSize/2);
+                            this.ctx.lineTo(this.xPos, this.yPos + gridSize/2);
+                        }else{
+                            
+                            this.ctx.moveTo(this.xPos - gridSize/2, this.yPos);
+                            this.ctx.lineTo(this.xPos + gridSize/2, this.yPos);
+                        }
+                        this.ctx.stroke();
+                        this.ctx.restore();
+                    }
+                }
+            }
+
             class Player{
                 /** @type {CanvasRenderingContext2D} */
                 ctx;
@@ -855,7 +1013,7 @@
                         let nextGridY = Math.floor(nextY/gridSize);
                         let nextGridX = Math.floor(nextX/gridSize);
 
-                        if(gridSquares[nextGridX] && !gridSquares[nextGridX][nextGridY]){
+                        if(gridSquares[nextGridX] && !gridSquares[nextGridX][nextGridY] && !dataSquares[nextGridX][nextGridY].blocked){
                             this.yPos = nextY;
                             this.xPos = nextX;
                         }
@@ -874,6 +1032,7 @@
             player = new Player(ctx, 256, 256);
             rayIntersections = {};
 
+
             function drawMouse(ctx){
                 if(MAP_EDIT_MODE){
                     ctx.save()
@@ -884,23 +1043,68 @@
                     ctx.restore();
                 }
             }
-
+            
             function paintSquares(mouseInput, gridSize){
-                if((mouseInput.click || mouseInput.altClick) && MAP_EDIT_MODE){
+                if((mouseInput.click || mouseInput.altClick || mouseInput.middleClick) && MAP_EDIT_MODE){
                     let gridX = Math.floor(mouseInput.x/gridSize);
                     let gridY = Math.floor(mouseInput.y/gridSize);
+
+                    let button = 0;
+                    if(mouseInput.click){
+                        button = 0;
+                    }else if(mouseInput.altClick){
+                        button = 2;
+                    }else if(mouseInput.middleClick && keyInputs.Shift){
+                        button = 3;
+                    }else if(mouseInput.middleClick){
+                        button = 1;
+                    }
+
                     if(gridX < gridSquares.length){
                         if(gridY < gridSquares[gridX].length){
-                            if(mouseInput.click){
-                                gridSquares[gridX][gridY] = true;
-                            }else if(mouseInput.altClick){
-                                gridSquares[gridX][gridY] = false;
+                            
+
+                            //only do each action once per square unless user mouse ups
+                            if(lastMouseAction.gridX != gridX || lastMouseAction.gridY != gridY || lastMouseAction.button != button){
+
+                                //grid wall operations remove sprites
+                                if(mouseInput.click || mouseInput.altClick){
+                                    for(var i = 0 ; i < spriteList.length; i++){
+                                        if(spriteList[i]){
+                                            if(Math.floor(spriteList[i].xPos/gridSize) == gridX && Math.floor(spriteList[i].yPos/gridSize) == gridY){
+                                                spriteList[i].deleteSprite();
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if(mouseInput.click){
+                                    gridSquares[gridX][gridY] = true;
+                                }else if(mouseInput.altClick){
+                                    gridSquares[gridX][gridY] = false;
+                                }else if(mouseInput.middleClick && keyInputs.Shift){
+                                    spriteList.push(new KeySprite(ctx, textureLoader.imageList['key'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize));
+                                }else if(mouseInput.middleClick){
+                                    //swap direction on repeats
+                                    if(dataSquares[gridX][gridY].blockedBy instanceof DoorSprite){
+                                        if(dataSquares[gridX][gridY].blockedBy.direction == 'x'){
+                                            dataSquares[gridX][gridY].blockedBy.direction = 'y';
+                                        }else{
+                                            dataSquares[gridX][gridY].blockedBy.direction = 'x';
+                                        }
+                                    }else{
+                                        spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x'));
+                                    }
+                                    
+                                }
+                                lastMouseAction.gridX = gridX;
+                                lastMouseAction.gridY = gridY;
+                                lastMouseAction.button = button;
                             }
                         }
                     }
                     generateMapCode();
                 }
-                
             }
 
             function compareDistance(a,b){
@@ -966,6 +1170,11 @@
             function play(deltaT){
                 var frameStart = performance.now();
                 spriteRenders = [];
+                for(var i = 0; i < spriteList.length; i++){
+                    if(spriteList[i] && spriteList[i].delete){
+                        spriteList[i] = null;
+                    }
+                }
                 generateGrid(gridSize);
                 paintSquares(mouseInput, gridSize);
                 drawSquares(ctx, gridSize);
@@ -974,8 +1183,10 @@
                 player.draw();
                 rayCastView(ctx, player);
                 for(var i = 0; i < spriteList.length; i++){
-                    spriteList[i].draw(player);
-                    spriteList[i].isVisible(player, rayIntersections);
+                    if(spriteList[i]){
+                        spriteList[i].draw(player);
+                        spriteList[i].isVisible(player, rayIntersections);
+                    }
                 }
                 drawCamera(ctxCamera, rayIntersections);
                 hoof.animate(deltaT);
@@ -983,7 +1194,17 @@
 
                 userInterface.update();
                 userInterface.draw(deltaT, player);
-                
+
+                if(keyInputs.m != true && !MAP_EDIT_MODE){
+                    ctx.fillStyle = "#333";
+                    ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+                    ctx.fillStyle = "grey";
+                    ctx.font = "bold 32px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Hold m for map..", ctx.canvas.width/2, ctx.canvas.height/2);
+                    ctx.font = "bold 16px sans-serif";
+                    ctx.fillText("(if you get lost)", ctx.canvas.width/2, ctx.canvas.height/2 + 32);
+                }
 
                 window.requestAnimationFrame(function(){
                     play(performance.now() - frameStart);
@@ -1100,7 +1321,7 @@
                         if(intersect.side == "x" &&  intersectionX < startCellX && gridX > 0){
                             gridX -= 1;
                         }
-                        seenSquares[gridX][gridY] = true;
+                        dataSquares[gridX][gridY].seen = true;
                         
                         rayIntersections[i+halfRes] = {
                             distance:intersect.rayLength,
@@ -1127,7 +1348,7 @@
                 }
                 
             }
-            generateMapCode();
+            
             function generateMapCode(){
                 let binaryString = '';
                 let charIndex = 0;
@@ -1151,15 +1372,36 @@
                     }
                 }
 
+                for(var i = 0; i < spriteList.length; i++){
+                    if(spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite){
+                        let type;
+                        if(spriteList[i] instanceof DoorSprite){
+                            if(spriteList[i].direction == 'x') type = 1;
+                            else type = 2;
+                        }else{
+                            type = 3;
+                        }
+                        binaryString += String.fromCodePoint(type + 32);
+                        binaryString += String.fromCodePoint(Math.floor(spriteList[i].xPos/gridSize) + 32);
+                        binaryString += String.fromCodePoint(Math.floor(spriteList[i].yPos/gridSize) + 32);
+                    }
+                }
+
                 
                 let map_code = document.getElementById("map_code");
                 map_code.value = binaryString;
             }
 
             function mapFromCode(code){
+                spriteList = [];
+                teleporter = new Teleporter(ctx, textureLoader.imageList['bed'], 256, 256, 0, gridSize, resolution);
+                teleporter.active = false;
+                spriteList.push(teleporter);
                 let binaryString = '';
-                for(var c = 0; c < code.length; c++){
-                    binaryString += (code.codePointAt(c) - 32).toString(2).padStart(4,"0");
+                let gridCode = code.substr(0,256);
+                let spriteCode = code.substr(256);
+                for(var c = 0; c < gridCode.length; c++){
+                    binaryString += (gridCode.codePointAt(c) - 32).toString(2).padStart(4,"0");
                 }
                 let cellIndex = 0;
                 for(var i = 0; i < gridSquares.length; i++){
@@ -1174,6 +1416,23 @@
                     }
                 }
                 generateSeenGrid();
+                
+                for(var i = 0; i < spriteCode.length; i += 3){
+                    let type = spriteCode.codePointAt(i) - 32;
+                    let gridX = spriteCode.codePointAt(i+1) - 32;
+                    let gridY = spriteCode.codePointAt(i+2) - 32;
+                    switch(type){
+                        case 1: //doorx
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x'));
+                        break;
+                        case 2: //doory
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y'));
+                        break;
+                        case 3: //key
+                            spriteList.push(new KeySprite(ctx, textureLoader.imageList['key'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize));
+                        break;
+                    }
+                }
             }
 
             load_map_btn.addEventListener("click", function(e){
@@ -1206,6 +1465,8 @@
                     mouseInput.click = true;
                 }else if(e.button == 2){
                     mouseInput.altClick = true;
+                }else if(e.button = 1){
+                    mouseInput.middleClick = true;
                 }
                 return false;
             });
@@ -1229,6 +1490,7 @@
                 map_edit_container.style.display = "block";
                 map_edit_btn.style.display = "none";
                 canvas.style.transform = "";
+                canvas.style.opacity = "1";
                 MAP_EDIT_MODE = true;
                 return false;
             })
@@ -1241,7 +1503,15 @@
                     mouseInput.click = false;
                 }else if(e.button == 2){
                     mouseInput.altClick = false;
+                }else if(e.button == 1){
+                    mouseInput.middleClick = false;
                 }
+                //reset on mouseup
+                lastMouseAction = {
+                    button:-1,
+                    gridX:0,
+                    gridY:0
+                };
                 return false;
             });
 
@@ -1275,11 +1545,8 @@
             }
             var teleporter;
             function generateWorld(){
-                spriteList = [];
                 sceneScore = 0;
-                teleporter = new Teleporter(ctx, textureLoader.imageList['bed'], 256, 256, 0, gridSize, resolution);
-                teleporter.active = false;
-                spriteList.push(teleporter);
+                keyCount = 0;
 
                 let flowerCount = Math.round(Math.random()*20) + 10;
                 let strawbSpawnCount = Math.round(Math.random()*15) + 5;
@@ -1319,8 +1586,10 @@
                 touch_input_container.style.display = "none";
             }
 
-            
-
+            soundLoader.load("sound/unlock.mp3", "unlock");
+            soundLoader.soundList['unlock'].volume = 0.4;
+            soundLoader.load("sound/key.mp3", "key");
+            soundLoader.soundList['key'].volume = 0.4;
             soundLoader.load("sound/bush.mp3", "bush");
             soundLoader.soundList['bush'].volume = 0.4;
             soundLoader.load("sound/ambiance.mp3", "ambiance");
@@ -1332,6 +1601,9 @@
             soundLoader.load("sound/step2.mp3", "step2");
             soundLoader.soundList['step2'].volume = 0.3;
             soundLoader.onload(function(){
+                textureLoader.load("img/key.png", 'key');
+                textureLoader.load("img/door.png", 'door');
+                textureLoader.load("img/door-open.png", 'door-open');
                 textureLoader.load("img/bed.png", 'bed');
                 textureLoader.load("img/wall.png", 'wall');
                 textureLoader.load("img/hoof.png", 'hoof');
@@ -1347,11 +1619,10 @@
                     let faceBlink = textureLoader.imageList['face-blink'];
                     let faceClose = textureLoader.imageList['face-close'];
                     let faceBlush = textureLoader.imageList['face-blush'];
-                    
                     userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
-                    generateWorld();
                     
-
+                    mapFromCode(level_1);
+                    generateWorld();
                     play(0);
                 });
             });
