@@ -47,7 +47,7 @@
             <div class="key" data-key="d">D</div>
         </div>
         <div id="map_edit_container" style="display:none;"><label for="map_code">Map layout code <input name="map_code" id="map_code" value=""/></label><button id="load_map_btn">load</button></div>
-        <button id="map_edit_btn">map edit mode</button>
+        <br><button id="map_edit_btn">map edit mode</button>
 
         <script>
             const canvasCamera = document.getElementById('camera');
@@ -1584,6 +1584,9 @@
 
             if(!isTouchDevice()){
                 touch_input_container.style.display = "none";
+            }else{
+                canvas.style.display = "none";
+                map_edit_btn.style.display = "none";
             }
 
             soundLoader.load("sound/unlock.mp3", "unlock");
