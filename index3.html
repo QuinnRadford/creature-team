@@ -40,7 +40,7 @@
         <canvas id="camera" width="512" height="512">
 
         </canvas>
-        <div class="controls-container">
+        <div class="controls-container" id="touch_input_container">
             <div></div><div class="key" data-key="w">W</div><div></div>
             <div class="key" data-key="a">A</div>
             <div class="key" data-key="s">S</div>
@@ -1307,6 +1307,16 @@
                     
                 }
 
+            }
+
+            function isTouchDevice() {
+            return (('ontouchstart' in window) ||
+                (navigator.maxTouchPoints > 0) ||
+                (navigator.msMaxTouchPoints > 0));
+            }
+
+            if(!isTouchDevice()){
+                touch_input_container.style.display = "none";
             }
 
             
