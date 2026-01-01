@@ -31,9 +31,10 @@
             }
             body{
                 min-width: 512px;
+                background:#333;
             }
         </style>
-        <canvas id="game" width="512" height="512">
+        <canvas id="game" width="512" height="512" style="transform:scale(0.5);">
 
         </canvas>
         <canvas id="camera" width="512" height="512">
@@ -186,21 +187,23 @@
             function generateGrid(gridSize){
                 ctx.fillStyle = "black";
                 ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 1;
-                for(var i = 0; i < ctx.canvas.width/gridSize; i++){
-                    let lineY = i*gridSize
-                    ctx.beginPath();
-                    ctx.moveTo(0,lineY);
-                    ctx.lineTo(ctx.canvas.width,lineY);
-                    ctx.stroke();
-                }
-                for(var i = 0; i < ctx.canvas.height/gridSize; i++){
-                    let lineX = i*gridSize
-                    ctx.beginPath();
-                    ctx.moveTo(lineX,0)
-                    ctx.lineTo(lineX, ctx.canvas.height);
-                    ctx.stroke();
+                if(MAP_EDIT_MODE){
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 1;
+                    for(var i = 0; i < ctx.canvas.width/gridSize; i++){
+                        let lineY = i*gridSize
+                        ctx.beginPath();
+                        ctx.moveTo(0,lineY);
+                        ctx.lineTo(ctx.canvas.width,lineY);
+                        ctx.stroke();
+                    }
+                    for(var i = 0; i < ctx.canvas.height/gridSize; i++){
+                        let lineX = i*gridSize
+                        ctx.beginPath();
+                        ctx.moveTo(lineX,0)
+                        ctx.lineTo(lineX, ctx.canvas.height);
+                        ctx.stroke();
+                    }
                 }
             }
 
@@ -1225,6 +1228,7 @@
                 e.preventDefault();
                 map_edit_container.style.display = "block";
                 map_edit_btn.style.display = "none";
+                canvas.style.transform = "";
                 MAP_EDIT_MODE = true;
                 return false;
             })
