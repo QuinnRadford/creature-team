@@ -680,10 +680,59 @@
                     this.ctx.restore();
                 }
 
+                _nearestArrow(player){
+                    let closestIndex = 0;
+                    let closestDistance = Infinity;
+                    for(var i = 0; i < spriteList.length; i++){
+                        if(spriteList[i] instanceof StrawberrySprite && spriteList[i].active){
+                            let thisDistance = Math.abs(spriteList[i].xPos - player.xPos) + Math.abs(spriteList[i].yPos - player.yPos);
+                            if(closestDistance > thisDistance){
+                                closestDistance = thisDistance;
+                                closestIndex = i;
+                            }
+                        }
+                    }
+                    let dx = spriteList[closestIndex].xPos - player.xPos
+                    let dy = spriteList[closestIndex].yPos - player.yPos
+                    let hp = Math.sqrt(Math.pow(dy,2) + Math.pow(dx, 2));
+
+                    dx = dx/hp;
+                    dy = dy/hp;
+
+                    let dot = dy * player.directionY + dx * player.directionX;
+                    let cross = dx * player.directionY - dy * player.directionX;
+                     
+                    let nearestAngle = -1*(Math.PI/2 * cross) - Math.PI/2
+                    if(dot < 0) nearestAngle = (nearestAngle) *-1;
+                    let scoreBox = 50;
+                    this.ctx.save();
+                    this._drawInsetBox(this.faceSize, 0-scoreBox, scoreBox, scoreBox)
+                    this.ctx.beginPath();
+                    this.ctx.fillStyle = "grey";
+                    let arcX = this.faceSize + this.borderWidth + this.insetWidth + (scoreBox - 2*(this.borderWidth + this.insetWidth))/2 -1;
+                    let arcY = this.ctx.canvas.height - (scoreBox/2) - scoreBox;
+                    this.ctx.arc(arcX, arcY, 16, 0, 2*Math.PI);
+                    this.ctx.fill();
+                    if(sceneScore == sceneGoal){
+                        this.ctx.fillStyle = "yellow";
+                    }else{
+                        this.ctx.fillStyle = "red";
+                    }
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(arcX,arcY);
+                    this.ctx.lineTo(arcX + Math.cos(nearestAngle - (Math.PI/8)) * 16, arcY+ Math.sin(nearestAngle - (Math.PI/8)) * 16);
+                    this.ctx.arc(arcX, arcY, 16, nearestAngle - (Math.PI/8), nearestAngle + (Math.PI/8));
+                    this.ctx.lineTo(arcX,arcY);
+                    this.ctx.fill();
+                    this.ctx.restore();
+
+                }
+
                 draw(deltaT, player){
                     this._drawFaceFrame();
                     this._drawScore();
                     this._drawRemaining()
+                    this._nearestArrow(player);
                     if(sceneScore == sceneGoal){
                         this._drawReadyNest();
                     }
