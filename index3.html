@@ -45,7 +45,9 @@
             <div class="key" data-key="s">S</div>
             <div class="key" data-key="d">D</div>
         </div>
-        <input id="map_code" value=""/><button id="load_map_btn">load</button>
+        <div id="map_edit_container" style="display:none;"><label for="map_code">Map layout code <input name="map_code" id="map_code" value=""/></label><button id="load_map_btn">load</button></div>
+        <button id="map_edit_btn">map edit mode</button>
+
         <script>
             const canvasCamera = document.getElementById('camera');
             /** @type {CanvasRenderingContext2D} */
@@ -72,11 +74,14 @@
             var spriteList = [];
             var spriteRenders = [];
 
+            var MAP_EDIT_MODE = false;
+
             var strawbCount = 0;
             var sceneGoal = 0;
             var sceneScore = 0;
             var userInterface;
             var levelCounter = 0;
+            var seenSquares = [];
 
             var level_1 = "////////(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !(      !////////";
             var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((    "!/.\',//##("" ( !!("" ( !!("" (//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////';
@@ -136,6 +141,8 @@
                 }
             }
 
+            
+
             var textureLoader = new ImageLoader();
             var soundLoader = new SoundLoader();
             
@@ -144,21 +151,28 @@
             for(var i = 0; i < ctx.canvas.width/gridSize; i++){
                 gridSquares[i] = [];
                 for(var ii = 0; ii < ctx.canvas.height/gridSize; ii++){
-                    if(ii == 0 || ii == Math.round(ctx.canvas.height/gridSize - 1) || i == 0 || i == Math.round(ctx.canvas.width/gridSize - 1)){
-                        gridSquares[i][ii] = true;
-                    }else{
-                        gridSquares[i][ii] = false;
-                    }
-                    
+                    gridSquares[i][ii] = false;
                 }
             }
+
+            mapFromCode(level_1);
+
+            function generateSeenGrid(){
+                for(var i = 0; i < gridSquares.length; i++){
+                    seenSquares[i] = [];
+                    for(var ii = 0; ii < gridSquares[i].length; ii++){
+                        seenSquares[i][ii] = false;
+                    }
+                }
+            }
+
 
             function drawSquares(ctx, gridSize){
                 ctx.save();
                 ctx.fillStyle = 'blue';
                 for(var i = 0; i < gridSquares.length; i++){
                     for(var ii = 0; ii < gridSquares[i].length; ii++){
-                        if(gridSquares[i][ii]){
+                        if(gridSquares[i][ii] && (seenSquares[i][ii] || MAP_EDIT_MODE )){
                             ctx.fillRect(i*gridSize,ii*gridSize,gridSize,gridSize);
                         }
                     }
@@ -289,6 +303,7 @@
                 width;
                 distance;
                 active = true;
+                seen = false;
 
                 constructor(ctx, image, xPos, yPos, zPos, width, height){
                     this.ctx = ctx;
@@ -303,12 +318,12 @@
                 
                 draw(player){
                     if(!this.active) return true;
-                    this.ctx.save();
+/*                     this.ctx.save();
                     this.ctx.fillStyle = "orange";
                     this.ctx.beginPath();
                     this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
                     this.ctx.fill();
-                    this.ctx.restore();
+                    this.ctx.restore(); */
                 }
 
                 isVisible(player, rayIntersections){
@@ -414,7 +429,7 @@
                                 let segment = Math.tan(diffAngle)*playerDistance;
 
                                 let linesegment = (segment + this.width/2)/this.width
-
+                                this.seen = true;
                                 spriteRenders.push(
                                     {
                                         pixel:pixel,
@@ -764,12 +779,14 @@
 
                 draw(player){
                     if(!this.active) return true;
-                    this.ctx.save();
-                    this.ctx.fillStyle = "red";
-                    this.ctx.beginPath();
-                    this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
-                    this.ctx.fill();
-                    this.ctx.restore();
+                    if(this.seen || MAP_EDIT_MODE){
+                        this.ctx.save();
+                        this.ctx.fillStyle = "red";
+                        this.ctx.beginPath();
+                        this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                        this.ctx.fill();
+                        this.ctx.restore();
+                    }
                 }
             }
             class Player{
@@ -855,16 +872,18 @@
             rayIntersections = {};
 
             function drawMouse(ctx){
-                ctx.save()
-                ctx.fillStyle = "teal";
-                ctx.beginPath();
-                ctx.arc(Math.round(mouseInput.x), Math.round(mouseInput.y), 4, 0, 2*Math.PI);
-                ctx.fill();
-                ctx.restore();
+                if(MAP_EDIT_MODE){
+                    ctx.save()
+                    ctx.fillStyle = "teal";
+                    ctx.beginPath();
+                    ctx.arc(Math.round(mouseInput.x), Math.round(mouseInput.y), 4, 0, 2*Math.PI);
+                    ctx.fill();
+                    ctx.restore();
+                }
             }
 
             function paintSquares(mouseInput, gridSize){
-                if(mouseInput.click || mouseInput.altClick){
+                if((mouseInput.click || mouseInput.altClick) && MAP_EDIT_MODE){
                     let gridX = Math.floor(mouseInput.x/gridSize);
                     let gridY = Math.floor(mouseInput.y/gridSize);
                     if(gridX < gridSquares.length){
@@ -1068,6 +1087,17 @@
                         }else{
                             textureCoordinate = Math.floor(32*(intersectionY - Math.floor(intersectionY)));
                         }
+
+                        
+                        let gridX = Math.floor(intersectionX);
+                        let gridY = Math.floor(intersectionY);
+                        if(intersect.side == "y" &&  intersectionY < startCellY && gridY > 0){
+                            gridY -= 1;
+                        }
+                        if(intersect.side == "x" &&  intersectionX < startCellX && gridX > 0){
+                            gridX -= 1;
+                        }
+                        seenSquares[gridX][gridY] = true;
                         
                         rayIntersections[i+halfRes] = {
                             distance:intersect.rayLength,
@@ -1140,6 +1170,7 @@
                         cellIndex++;
                     }
                 }
+                generateSeenGrid();
             }
 
             load_map_btn.addEventListener("click", function(e){
@@ -1189,6 +1220,14 @@
                 mouseInput.click = false;
                 return false;
             });
+
+            map_edit_btn.addEventListener("click", function(e){
+                e.preventDefault();
+                map_edit_container.style.display = "block";
+                map_edit_btn.style.display = "none";
+                MAP_EDIT_MODE = true;
+                return false;
+            })
 
             
 
