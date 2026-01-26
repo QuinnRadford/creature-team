@@ -1251,7 +1251,17 @@
                                             }else{
                                                 dataSquares[gridX][gridY].blockedBy.type = 1;
                                             }
-                                            
+                                            switch(dataSquares[gridX][gridY].blockedBy.type){
+                                                case 1:
+                                                    dataSquares[gridX][gridY].blockedBy.image =  textureLoader.imageList['door'];
+                                                break;
+                                                case 2:
+                                                    dataSquares[gridX][gridY].blockedBy.image =  textureLoader.imageList['door_silver'];
+                                                break;
+                                                case 3:
+                                                    dataSquares[gridX][gridY].blockedBy.image =  textureLoader.imageList['door_bronze'];
+                                                break;
+                                            }
                                         }
                                     }else{
                                         spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', 1));
@@ -1605,14 +1615,22 @@
                         break;
 
                         case 6: //doorx 
-                        case 7: //doorx
-                        case 8: //doorx
                             spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', type-5));
                         break;
+                        case 7: //doorx
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door_silver'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', type-5));
+                        break;
+                        case 8: //doorx
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door_bronze'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', type-5));
+                        break;
                         case 9: //doory
-                        case 10: //doory
-                        case 11: //doory
                             spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y', type-8));
+                        break;
+                        case 10: //doory
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door_silver'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y', type-8));
+                        break;
+                        case 11: //doory
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door_bronze'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y', type-8));
                         break;
                     }
                 }
@@ -1845,6 +1863,8 @@
                 textureLoader.load("img/key_bronze.png", 'key_bronze');
                 textureLoader.load("img/key_silver.png", 'key_silver');
                 textureLoader.load("img/door.png", 'door');
+                textureLoader.load("img/door_silver.png", 'door_silver');
+                textureLoader.load("img/door_bronze.png", 'door_bronze');
                 textureLoader.load("img/door-open.png", 'door-open');
                 textureLoader.load("img/bed.png", 'bed');
                 textureLoader.load("img/wall.png", 'wall');
