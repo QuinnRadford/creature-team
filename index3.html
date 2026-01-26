@@ -86,7 +86,7 @@
             var sceneScore = 0;
             var userInterface;
             var splashScreen;
-            var keyCount = 0;
+            var keyCount = {};
             var levelCounter = 0;
             var dataSquares = [];
             var lastMouseAction = {
@@ -95,7 +95,7 @@
                 gridY:0
             };
 
-            var level_1 = "/////////(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #//(    #////.////.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////!-/#8.";
+            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%";
             var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9!6="42#<<';
             var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////"0-"0*"0\'"-:!33!=5##=#-7#,/#8<#<)"6\'#=%#=/#0(';
             var mapLevels = [
@@ -878,8 +878,23 @@
                 }
 
                 _drawKeys(){
-                    for(var i = 0; i < keyCount; i++){
-                        this.ctx.drawImage(textureLoader.imageList['key'], this.faceSize - 40 + (i*4), this.ctx.canvas.height - 60 + (i*4), 40,40);
+                    let typeCount = 0;
+                    for(const type in keyCount){
+                        switch(type){
+                            case '1':
+                                var keyImg = "key";
+                            break;
+                            case '2':
+                                var keyImg = "key_silver";
+                            break;
+                            case '3':
+                                var keyImg = "key_bronze";
+                            break;
+                        }
+                        for(var i = 0; i < keyCount[type]; i++){
+                            this.ctx.drawImage(textureLoader.imageList[keyImg], this.faceSize - 40 + (i*4), this.ctx.canvas.height - 60 + (i*4) + (typeCount*8), 40,40);
+                        }
+                        typeCount++;
                     }
                 }
 
@@ -891,9 +906,9 @@
                     if(sceneScore == sceneGoal){
                         this._drawReadyNest();
                     }
-                    if(keyCount > 0){
-                        this._drawKeys();
-                    }
+                    
+                    this._drawKeys();
+                    
                     if(this.effectActive){
                         this.sceneChange(deltaT, player);
                     }
@@ -934,8 +949,10 @@
             }
 
             class KeySprite extends Sprite{
-                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                type;
+                constructor(ctx, image, xPos, yPos, zPos, width, height, type){
                     super(ctx, image, xPos, yPos, zPos, width, height);
+                    this.type = type;
                 }
 
                 isVisible(player, rayIntersections){
@@ -946,7 +963,8 @@
                         let xRelative = ( this.xPos - player.xPos)/gridSize;
                         let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
                         if(playerDistance < 0.3){
-                            keyCount += 1;
+                            if(!keyCount[this.type]) keyCount[this.type] = 0;
+                            keyCount[this.type] += 1;
                             this.active = false;
                             soundLoader.soundList['key'].play();
                         }
@@ -957,7 +975,18 @@
                     if(!this.active) return true;
                     if(this.seen || MAP_EDIT_MODE){
                         this.ctx.save();
-                        this.ctx.fillStyle = "gold";
+                        switch(this.type){
+                            case 1:
+                                this.ctx.fillStyle = "gold";
+                            break;
+                            case 2:
+                                this.ctx.fillStyle = "silver";
+                            break;
+                            case 3:
+                                this.ctx.fillStyle = "#CD7F32";
+                            break;
+                        }
+                        
                         this.ctx.beginPath();
                         this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
                         this.ctx.fill();
@@ -971,11 +1000,13 @@
                 open = false;
                 openImg;
                 closedImg;
-                constructor(ctx, openImg, closedImg, xPos, yPos, width, height, direction){
+                type;
+                constructor(ctx, openImg, closedImg, xPos, yPos, width, height, direction, type){
                     super(ctx, closedImg, xPos, yPos, 0, width, height);
                     this.direction = direction;
                     this.openImg = openImg;
                     this.closedImg = closedImg;
+                    this.type = type;
                     //block own square
                     dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = true;
                     dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blockedBy = this;
@@ -1006,8 +1037,8 @@
                     let yRelative = ( this.yPos - player.yPos)/gridSize;
                     let xRelative = ( this.xPos - player.xPos)/gridSize;
                     let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
-                    if(playerDistance < 0.6 && keyCount > 0 && !this.open){
-                        keyCount -= 1;
+                    if(playerDistance < 0.6 && keyCount[this.type] > 0 && !this.open){
+                        keyCount[this.type] -= 1;
                         this.setOpen();
                         soundLoader.soundList['unlock'].play();
                         soundLoader.soundList['bleat'].play();
@@ -1020,7 +1051,17 @@
                     if(!this.active) return false;
                     if(this.seen || MAP_EDIT_MODE){
                         this.ctx.save();
-                        this.ctx.strokeStyle = "green";
+                        switch(this.type){
+                            case 1:
+                                this.ctx.strokeStyle = "gold";
+                            break;
+                            case 2:
+                                this.ctx.strokeStyle = "silver";
+                            break;
+                            case 3:
+                                this.ctx.strokeStyle = "#CD7F32";
+                            break;
+                        }
                         this.ctx.lineWidth = 4;
                         this.ctx.beginPath();
                         if(this.direction == 'x'){ //blocking the x direction
@@ -1171,7 +1212,33 @@
                                 }else if(mouseInput.altClick){
                                     gridSquares[gridX][gridY] = false;
                                 }else if(mouseInput.middleClick && keyInputs.Shift){
-                                    spriteList.push(new KeySprite(ctx, textureLoader.imageList['key'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize));
+                                    let keyFound = false;
+                                    for(var i = 0 ; i < spriteList.length; i++){
+                                        if(spriteList[i]){
+                                            if(Math.floor(spriteList[i].xPos/gridSize) == gridX && Math.floor(spriteList[i].yPos/gridSize) == gridY){
+                                                if(spriteList[i] instanceof KeySprite){
+                                                    switch(spriteList[i].type){
+                                                        case 1:
+                                                            spriteList[i].type = 2;
+                                                            spriteList[i].image = textureLoader.imageList['key_silver'];
+                                                        break;
+                                                        case 2:
+                                                            spriteList[i].type = 3;
+                                                            spriteList[i].image = textureLoader.imageList['key_bronze'];
+                                                        break;
+                                                        case 3:
+                                                            spriteList[i].type = 1;
+                                                            spriteList[i].image = textureLoader.imageList['key'];
+                                                        break;
+                                                    }
+                                                    keyFound = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if(!keyFound){
+                                        spriteList.push(new KeySprite(ctx, textureLoader.imageList['key'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
+                                    }
                                 }else if(mouseInput.middleClick){
                                     //swap direction on repeats
                                     if(dataSquares[gridX][gridY].blockedBy instanceof DoorSprite){
@@ -1179,9 +1246,15 @@
                                             dataSquares[gridX][gridY].blockedBy.direction = 'y';
                                         }else{
                                             dataSquares[gridX][gridY].blockedBy.direction = 'x';
+                                            if(dataSquares[gridX][gridY].blockedBy.type < 3){
+                                                dataSquares[gridX][gridY].blockedBy.type += 1;
+                                            }else{
+                                                dataSquares[gridX][gridY].blockedBy.type = 1;
+                                            }
+                                            
                                         }
                                     }else{
-                                        spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x'));
+                                        spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', 1));
                                     }
                                     
                                 }
@@ -1466,10 +1539,13 @@
                     if(spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite){
                         let type;
                         if(spriteList[i] instanceof DoorSprite){
-                            if(spriteList[i].direction == 'x') type = 1;
-                            else type = 2;
+                            if(spriteList[i].direction == 'x'){
+                                type = 5 + spriteList[i].type;   
+                            }else{
+                                type = 8 + spriteList[i].type;
+                            }
                         }else{
-                            type = 3;
+                            type = 2 + spriteList[i].type;
                         }
                         binaryString += String.fromCodePoint(type + 32);
                         binaryString += String.fromCodePoint(Math.floor(spriteList[i].xPos/gridSize) + 32);
@@ -1513,13 +1589,30 @@
                     let gridY = spriteCode.codePointAt(i+2) - 32;
                     switch(type){
                         case 1: //doorx
-                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x'));
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', 1));
                         break;
                         case 2: //doory
-                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y'));
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y', 1));
                         break;
                         case 3: //key
-                            spriteList.push(new KeySprite(ctx, textureLoader.imageList['key'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize));
+                            spriteList.push(new KeySprite(ctx, textureLoader.imageList['key'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, type - 2));
+                        break;
+                        case 4:
+                            spriteList.push(new KeySprite(ctx, textureLoader.imageList['key_silver'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, type - 2));
+                        break;
+                        case 5:
+                            spriteList.push(new KeySprite(ctx, textureLoader.imageList['key_bronze'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, type - 2));
+                        break;
+
+                        case 6: //doorx 
+                        case 7: //doorx
+                        case 8: //doorx
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'x', type-5));
+                        break;
+                        case 9: //doory
+                        case 10: //doory
+                        case 11: //doory
+                            spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y', type-8));
                         break;
                     }
                 }
@@ -1690,7 +1783,7 @@
             var teleporter;
             function generateWorld(){
                 sceneScore = 0;
-                keyCount = 0;
+                keyCount = {};
 
                 let flowerCount = Math.round(Math.random()*20) + 10;
                 let strawbSpawnCount = Math.round(Math.random()*15) + 5;
@@ -1749,6 +1842,8 @@
             soundLoader.soundList['step2'].volume = 0.3;
             soundLoader.onload(function(){
                 textureLoader.load("img/key.png", 'key');
+                textureLoader.load("img/key_bronze.png", 'key_bronze');
+                textureLoader.load("img/key_silver.png", 'key_silver');
                 textureLoader.load("img/door.png", 'door');
                 textureLoader.load("img/door-open.png", 'door-open');
                 textureLoader.load("img/bed.png", 'bed');
