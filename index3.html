@@ -68,7 +68,8 @@
                 a:false,
                 d:false,
                 m:false,
-                Shift:false
+                Shift:false,
+                Space:false
             };
             var strawb;
             var hoof;
@@ -76,6 +77,7 @@
             var rayIntersections;
             var spriteList = [];
             var spriteRenders = [];
+            var menuOpen = true;
 
             var MAP_EDIT_MODE = false;
 
@@ -83,6 +85,7 @@
             var sceneGoal = 0;
             var sceneScore = 0;
             var userInterface;
+            var splashScreen;
             var keyCount = 0;
             var levelCounter = 0;
             var dataSquares = [];
@@ -100,8 +103,16 @@
                 level_2,
                 level_3
             ];
-
+            //for map canvas
             var mouseInput = {
+                x:0,
+                y:0,
+                click:false,
+                altClick:false,
+                middleClick:false
+            }
+            //for game canvas
+            var mouseInput_game = {
                 x:0,
                 y:0,
                 click:false,
@@ -548,6 +559,83 @@
                     }
                     super.isVisible(player, rayIntersections);
                 }
+            }
+
+            class Splash{
+                /** @type {CanvasRenderingContext2D} */
+                ctx;
+                borderWidth = 4;
+                insetWidth = 2;
+                isOpen;
+                splashImg;
+                lastFlash = 0;
+
+                constructor(ctx, splashImg){
+                    this.ctx = ctx;
+                    this.splashImg = splashImg;
+                    this.isOpen = true;
+                }
+                close(){
+                    this.ctx.canvas.style.cursor = "auto";
+                    this.isOpen = false;
+                }
+                open(){
+                    this.isOpen = true;
+                }
+
+                draw(deltaT){
+
+                    if((mouseInput_game.y > this.ctx.canvas.height - 100 && mouseInput_game.click)|| keyInputs[" "]){
+                        canvas.style.visibility = "visible";
+                        this.close();
+                        return true;
+                    }else{
+                        canvas.style.visibility = "hidden";
+                    }
+                    
+                    this.ctx.drawImage(this.splashImg, 0,0,this.ctx.canvas.width, this.ctx.canvas.height);
+                    this._drawInsetBox(0,0,this.ctx.canvas.width,100);
+                    this.ctx.save();
+                    this.ctx.fillStyle = "white";
+                    this.ctx.textAlign = "center";
+                    this.ctx.font = "28px sans-serif";
+                    this.ctx.fillText("START", this.ctx.canvas.width/2, this.ctx.canvas.height - 40);
+                    if(performance.now() -  this.lastFlash >= 500){
+                        if(performance.now() -  this.lastFlash >= 1000){
+                        this.lastFlash = performance.now();
+                        }
+                        this.ctx.fillText(">", this.ctx.canvas.width/2 - 60, this.ctx.canvas.height - 40);
+                    }
+
+                    if(mouseInput_game.y > this.ctx.canvas.height - 100){
+                        this.ctx.strokeStyle = "white";
+                        this.ctx.strokeRect(this.ctx.canvas.width/2 - 100, this.ctx.canvas.height - 75, 200,50);
+                        this.ctx.canvas.style.cursor = "pointer";
+                    }else{
+                        this.ctx.canvas.style.cursor = "auto";
+                    }
+                    
+                    this.ctx.restore();
+                }
+
+                //x y relative bottom left
+                _drawInsetBox(x,y,width, height){
+                    this.ctx.fillStyle = "teal";
+                    this.ctx.fillRect(x, y+this.ctx.canvas.height - height, width, height);
+                    
+                    this.ctx.fillStyle = "grey"
+                    this.ctx.fillRect(x+this.borderWidth, y+this.ctx.canvas.height - height + this.borderWidth, width - this.borderWidth*2 - this.insetWidth, this.insetWidth);
+                    this.ctx.fillRect(x+this.borderWidth, y+this.ctx.canvas.height - height + this.borderWidth, this.insetWidth, height - this.borderWidth*2);
+
+                    this.ctx.fillStyle = "white"
+                    this.ctx.fillRect(x+this.borderWidth, y+this.ctx.canvas.height - this.borderWidth - this.insetWidth, width - this.borderWidth*2 - this.insetWidth, this.insetWidth);
+                    this.ctx.fillRect(x+width - 2*this.borderWidth, y+this.ctx.canvas.height - height + this.borderWidth, this.insetWidth, height - this.borderWidth*2);
+                    
+                    this.ctx.fillStyle = "darkSlateGrey";
+                    this.ctx.fillRect(x+this.borderWidth + this.insetWidth, y+this.ctx.canvas.height - height + this.borderWidth + this.insetWidth, width - 2*(this.insetWidth + this.borderWidth) - this.insetWidth, height - 2*(this.insetWidth + this.borderWidth));
+                    
+                }
+
             }
 
             class UserInterface{
@@ -1165,47 +1253,49 @@
                 ctxCamera.restore();
             }
 
-
             //main update loop
             function play(deltaT){
                 var frameStart = performance.now();
-                spriteRenders = [];
-                for(var i = 0; i < spriteList.length; i++){
-                    if(spriteList[i] && spriteList[i].delete){
-                        spriteList[i] = null;
+                if(splashScreen.isOpen){
+                    splashScreen.draw();
+                }else{
+                    spriteRenders = [];
+                    for(var i = 0; i < spriteList.length; i++){
+                        if(spriteList[i] && spriteList[i].delete){
+                            spriteList[i] = null;
+                        }
+                    }
+                    generateGrid(gridSize);
+                    paintSquares(mouseInput, gridSize);
+                    drawSquares(ctx, gridSize);
+                    drawMouse(ctx);
+                    player.animate(deltaT);
+                    player.draw();
+                    rayCastView(ctx, player);
+                    for(var i = 0; i < spriteList.length; i++){
+                        if(spriteList[i]){
+                            spriteList[i].draw(player);
+                            spriteList[i].isVisible(player, rayIntersections);
+                        }
+                    }
+                    drawCamera(ctxCamera, rayIntersections);
+                    hoof.animate(deltaT);
+                    hoof.draw();
+
+                    userInterface.update();
+                    userInterface.draw(deltaT, player);
+
+                    if(keyInputs.m != true && !MAP_EDIT_MODE){
+                        ctx.fillStyle = "#333";
+                        ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+                        ctx.fillStyle = "grey";
+                        ctx.font = "bold 32px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.fillText("Hold m for map..", ctx.canvas.width/2, ctx.canvas.height/2);
+                        ctx.font = "bold 16px sans-serif";
+                        ctx.fillText("(if you get lost)", ctx.canvas.width/2, ctx.canvas.height/2 + 32);
                     }
                 }
-                generateGrid(gridSize);
-                paintSquares(mouseInput, gridSize);
-                drawSquares(ctx, gridSize);
-                drawMouse(ctx);
-                player.animate(deltaT);
-                player.draw();
-                rayCastView(ctx, player);
-                for(var i = 0; i < spriteList.length; i++){
-                    if(spriteList[i]){
-                        spriteList[i].draw(player);
-                        spriteList[i].isVisible(player, rayIntersections);
-                    }
-                }
-                drawCamera(ctxCamera, rayIntersections);
-                hoof.animate(deltaT);
-                hoof.draw();
-
-                userInterface.update();
-                userInterface.draw(deltaT, player);
-
-                if(keyInputs.m != true && !MAP_EDIT_MODE){
-                    ctx.fillStyle = "#333";
-                    ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
-                    ctx.fillStyle = "grey";
-                    ctx.font = "bold 32px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText("Hold m for map..", ctx.canvas.width/2, ctx.canvas.height/2);
-                    ctx.font = "bold 16px sans-serif";
-                    ctx.fillText("(if you get lost)", ctx.canvas.width/2, ctx.canvas.height/2 + 32);
-                }
-
                 window.requestAnimationFrame(function(){
                     play(performance.now() - frameStart);
                 });
@@ -1515,9 +1605,63 @@
                 return false;
             });
 
+            canvasCamera.addEventListener("mousemove",function(e){
+                mouseInput_game.x = e.offsetX;
+                mouseInput_game.y = e.offsetY;
+            });
+
+            canvasCamera.addEventListener("touchmove",function(e){
+                mouseInput_game.y = e.changedTouches[0].clientY - canvas.offsetTop + document.scrollingElement.scrollTop;
+                mouseInput_game.x = e.changedTouches[0].clientX - canvas.offsetLeft;
+            });
+
+            canvasCamera.addEventListener("mousedown", function(e){
+                e.preventDefault();
+                if(e.button == 0){
+                    mouseInput_game.click = true;
+                }else if(e.button == 2){
+                    mouseInput_game.altClick = true;
+                }else if(e.button = 1){
+                    mouseInput_game.middleClick = true;
+                }
+                return false;
+            });
+
+            canvasCamera.addEventListener("touchstart", function(e){
+                e.preventDefault();
+                mouseInput_game.y = e.touches[0].clientY - canvas.offsetTop + document.scrollingElement.scrollTop;
+                mouseInput_game.x = e.touches[0].clientX - canvas.offsetLeft;
+                mouseInput_game.click = true;
+                return false;
+            });
+
+            canvasCamera.addEventListener("touchend", function(e){
+                e.preventDefault();
+                mouseInput_game.click = false;
+                return false;
+            });
+
             canvas.addEventListener("contextmenu",function(e){
                 e.preventDefault();
                 e.stopPropagation();
+                return false;
+            });
+
+            canvasCamera.addEventListener("contextmenu",function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            });
+
+            canvasCamera.addEventListener("mouseup", function(e){
+                e.preventDefault();
+                if(e.button == 0){
+                    mouseInput_game.click = false;
+                }else if(e.button == 2){
+                    mouseInput_game.altClick = false;
+                }else if(e.button == 1){
+                    mouseInput_game.middleClick = false;
+                }
                 return false;
             });
 
@@ -1616,6 +1760,7 @@
                 textureLoader.load("img/deer-face-closed.png", 'face-close');
                 textureLoader.load("img/deer-blush.png", 'face-blush');
                 textureLoader.load("img/flower.png", 'flower');
+                textureLoader.load("img/splash.png", 'splash');
                 textureLoader.onload(function(){
                     console.log("loaded");
                     let faceImg = textureLoader.imageList['face'];
@@ -1623,7 +1768,7 @@
                     let faceClose = textureLoader.imageList['face-close'];
                     let faceBlush = textureLoader.imageList['face-blush'];
                     userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
-                    
+                    splashScreen = new Splash(ctxCamera, textureLoader.imageList['splash']);
                     mapFromCode(level_1);
                     generateWorld();
                     play(0);
