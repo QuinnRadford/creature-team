@@ -68,6 +68,7 @@
                 a:false,
                 d:false,
                 m:false,
+                t:false,
                 Shift:false,
                 Space:false
             };
@@ -95,7 +96,7 @@
                 gridY:0
             };
 
-            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%";
+            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,6+,09,4$,0*,:1,&8,\"(,**,:9,+.,#2";
             var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9!6="42#<<';
             var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////"0-"0*"0\'"-:!33!=5##=#-7#,/#8<#<)"6\'#=%#=/#0(';
             var mapLevels = [
@@ -948,6 +949,31 @@
                 }
             }
 
+            class TreeSprite extends Sprite{
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                    dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = true;
+                    dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blockedBy = this;
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                    
+                }
+
+                draw(player){
+                    if(!this.active) return true;
+                    if(this.seen || MAP_EDIT_MODE){
+                        this.ctx.save();
+                        this.ctx.fillStyle = "green";
+                        this.ctx.beginPath();
+                        this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                        this.ctx.fill();
+                        this.ctx.restore();
+                    }
+                }
+            }
+
             class KeySprite extends Sprite{
                 type;
                 constructor(ctx, image, xPos, yPos, zPos, width, height, type){
@@ -1206,8 +1232,9 @@
                                         }
                                     }
                                 }
-
-                                if(mouseInput.click){
+                                if(mouseInput.click && keyInputs.t){
+                                    spriteList.push(new TreeSprite(ctx, textureLoader.imageList['tree'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
+                                }else if(mouseInput.click){
                                     gridSquares[gridX][gridY] = true;
                                 }else if(mouseInput.altClick){
                                     gridSquares[gridX][gridY] = false;
@@ -1546,7 +1573,7 @@
                 }
 
                 for(var i = 0; i < spriteList.length; i++){
-                    if(spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite){
+                    if(spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite || spriteList[i] instanceof TreeSprite){
                         let type;
                         if(spriteList[i] instanceof DoorSprite){
                             if(spriteList[i].direction == 'x'){
@@ -1554,8 +1581,10 @@
                             }else{
                                 type = 8 + spriteList[i].type;
                             }
-                        }else{
+                        }else if(spriteList[i] instanceof KeySprite){
                             type = 2 + spriteList[i].type;
+                        }else if(spriteList[i] instanceof TreeSprite){
+                            type = 12;
                         }
                         binaryString += String.fromCodePoint(type + 32);
                         binaryString += String.fromCodePoint(Math.floor(spriteList[i].xPos/gridSize) + 32);
@@ -1631,6 +1660,9 @@
                         break;
                         case 11: //doory
                             spriteList.push(new DoorSprite(ctx, textureLoader.imageList['door-open'], textureLoader.imageList['door_bronze'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize, 'y', type-8));
+                        break;
+                        case 12: //tree
+                            spriteList.push(new TreeSprite(ctx, textureLoader.imageList['tree'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize));
                         break;
                     }
                 }
@@ -1876,6 +1908,7 @@
                 textureLoader.load("img/deer-blush.png", 'face-blush');
                 textureLoader.load("img/flower.png", 'flower');
                 textureLoader.load("img/splash.png", 'splash');
+                textureLoader.load("img/tree.png", 'tree');
                 textureLoader.onload(function(){
                     console.log("loaded");
                     let faceImg = textureLoader.imageList['face'];
