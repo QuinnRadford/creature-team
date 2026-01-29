@@ -69,6 +69,7 @@
                 d:false,
                 m:false,
                 t:false,
+                b:false,
                 Shift:false,
                 Space:false
             };
@@ -96,7 +97,7 @@
                 gridY:0
             };
 
-            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,6+,09,4$,0*,:1,&8,\"(,**,:9,+.,#2";
+            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,6+,09,4$,0*,:1,&8,\"(,**,:9,+.,#2-4.-06-&6-(\'";
             var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9!6="42#<<';
             var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////"0-"0*"0\'"-:!33!=5##=#-7#,/#8<#<)"6\'#=%#=/#0(';
             var mapLevels = [
@@ -351,6 +352,9 @@
                 }
                 draw(player){
                     if(!this.active) return true;
+                }
+                update(deltaT){
+
                 }
 
                 isVisible(player, rayIntersections){
@@ -974,6 +978,89 @@
                 }
             }
 
+            class BunnySprite extends Sprite{
+                
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                    this.directionX = 0;
+                    this.directionY = 0;
+                    this.hopLength = 15;
+                    this.hopProgress = 0;
+                    this.speed = 1;
+                    this.isMoving = false;
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                    
+                }
+                _chooseDirection(){
+                    let direction = Math.random() * 2*Math.PI;
+                    this.directionY = Math.sin(direction);
+                    this.directionX = Math.cos(direction);
+                }
+                pickHop(){
+                    this._chooseDirection();
+                    while(true){
+                        let hopDestX = (this.xPos + (this.directionX*this.hopLength))/gridSize;
+                        let hopDestY = (this.yPos + (this.directionY*this.hopLength))/gridSize;
+                        if(hopDestX < 0 || hopDestY < 0 || hopDestX > dataSquares.length || hopDestY > dataSquares.length || dataSquares[Math.floor(hopDestX)][Math.floor(hopDestY)].blocked || gridSquares[Math.floor(hopDestX)][Math.floor(hopDestY)]){
+                            this._chooseDirection()
+                        }else{
+                            break;
+                        }
+                    }
+                    this.hopProgress = 0;
+                    this.isMoving = true;
+                }
+                update(deltaT){
+                    if(this.isMoving == false){
+                        this.pickHop();
+                    }
+
+                    let extraSpeed = 15 * (1-(this.hopProgress/this.hopLength));
+                    
+
+                    let frameDistance = (this.speed + extraSpeed)*(deltaT/1000);
+
+                    if(this.hopProgress + frameDistance > this.hopLength){
+                        frameDistance = this.hopLength - this.hopProgress;
+                        this.isMoving = false;
+                    }
+                    this.hopProgress += frameDistance;
+                    this.xPos += (this.directionX*frameDistance);
+                    this.yPos += (this.directionY*frameDistance);
+                    if(dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked || gridSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)]){
+                        this.isMoving == false;
+                    }
+                }
+
+                draw(player){
+                    let dot = this.directionY * player.directionY + this.directionX * player.directionX;
+                    let cross = this.directionX * player.directionY - this.directionY * player.directionX;
+                     
+                    if(dot < 0){
+                        this.image = textureLoader.imageList['bunny']
+                    }else{
+                        this.image = textureLoader.imageList['bunny_back']
+                    }
+
+                    let nearestAngle = -1*(Math.PI/2 * cross) - Math.PI/2
+
+                    if(dot < 0) nearestAngle = (nearestAngle) *-1;
+
+                    if(!this.active) return true;
+                    if(this.seen || MAP_EDIT_MODE){
+                        this.ctx.save();
+                        this.ctx.fillStyle = "pink";
+                        this.ctx.beginPath();
+                        this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                        this.ctx.fill();
+                        this.ctx.restore();
+                    }
+                }
+            }
+
             class KeySprite extends Sprite{
                 type;
                 constructor(ctx, image, xPos, yPos, zPos, width, height, type){
@@ -1232,7 +1319,9 @@
                                         }
                                     }
                                 }
-                                if(mouseInput.click && keyInputs.t){
+                                if(mouseInput.click && keyInputs.b){
+                                    spriteList.push(new BunnySprite(ctx, textureLoader.imageList['bunny'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
+                                }else if(mouseInput.click && keyInputs.t){
                                     spriteList.push(new TreeSprite(ctx, textureLoader.imageList['tree'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
                                 }else if(mouseInput.click){
                                     gridSquares[gridX][gridY] = true;
@@ -1384,6 +1473,7 @@
                     rayCastView(ctx, player);
                     for(var i = 0; i < spriteList.length; i++){
                         if(spriteList[i]){
+                            spriteList[i].update(deltaT);
                             spriteList[i].draw(player);
                             spriteList[i].isVisible(player, rayIntersections);
                         }
@@ -1573,7 +1663,7 @@
                 }
 
                 for(var i = 0; i < spriteList.length; i++){
-                    if(spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite || spriteList[i] instanceof TreeSprite){
+                    if(spriteList[i] instanceof BunnySprite || spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite || spriteList[i] instanceof TreeSprite){
                         let type;
                         if(spriteList[i] instanceof DoorSprite){
                             if(spriteList[i].direction == 'x'){
@@ -1585,6 +1675,8 @@
                             type = 2 + spriteList[i].type;
                         }else if(spriteList[i] instanceof TreeSprite){
                             type = 12;
+                        } else if(spriteList[i] instanceof BunnySprite){
+                            type = 13;
                         }
                         binaryString += String.fromCodePoint(type + 32);
                         binaryString += String.fromCodePoint(Math.floor(spriteList[i].xPos/gridSize) + 32);
@@ -1663,6 +1755,9 @@
                         break;
                         case 12: //tree
                             spriteList.push(new TreeSprite(ctx, textureLoader.imageList['tree'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize));
+                        break;
+                        case 13: //bunny
+                            spriteList.push(new BunnySprite(ctx, textureLoader.imageList['bunny'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize));
                         break;
                     }
                 }
@@ -1909,6 +2004,8 @@
                 textureLoader.load("img/flower.png", 'flower');
                 textureLoader.load("img/splash.png", 'splash');
                 textureLoader.load("img/tree.png", 'tree');
+                textureLoader.load("img/bunny.png", 'bunny');
+                textureLoader.load("img/bunny-back.png", 'bunny_back');
                 textureLoader.onload(function(){
                     console.log("loaded");
                     let faceImg = textureLoader.imageList['face'];
@@ -1917,6 +2014,7 @@
                     let faceBlush = textureLoader.imageList['face-blush'];
                     userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
                     splashScreen = new Splash(ctxCamera, textureLoader.imageList['splash']);
+                    
                     mapFromCode(level_1);
                     generateWorld();
                     play(0);
