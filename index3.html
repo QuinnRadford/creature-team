@@ -1036,18 +1036,19 @@
                 }
 
                 draw(player){
-                    let dot = this.directionY * player.directionY + this.directionX * player.directionX;
-                    let cross = this.directionX * player.directionY - this.directionY * player.directionX;
+
+                    let playerAngle = Math.atan2(this.yPos - player.yPos, this.xPos - player.xPos);
+                    let py = Math.sin(playerAngle);
+                    let px = Math.cos(playerAngle);
+
+                    let dot = this.directionY * py + this.directionX * px;
+                    let cross = this.directionX * py - this.directionY * px;
                      
                     if(dot < 0){
                         this.image = textureLoader.imageList['bunny']
                     }else{
                         this.image = textureLoader.imageList['bunny_back']
                     }
-
-                    let nearestAngle = -1*(Math.PI/2 * cross) - Math.PI/2
-
-                    if(dot < 0) nearestAngle = (nearestAngle) *-1;
 
                     if(!this.active) return true;
                     if(this.seen || MAP_EDIT_MODE){
@@ -1767,14 +1768,35 @@
                 e.preventDefault();
                 mapFromCode(map_code.value);
                 return false;
-            })
+            });
+
+            function translateKeyControls(key){
+                switch(key){
+                    case 'ArrowUp':
+                        return 'w';
+                    break;
+                    case 'ArrowLeft':
+                        return 'a';
+                    break;
+                    case 'ArrowRight':
+                        return 'd';
+                    break;
+                    case 'ArrowDown':
+                        return 's';
+                    break;
+                    default:
+                        return key;
+                }
+            }
             
             document.addEventListener("keydown",function(e){
-                keyInputs[e.key] = true;
+                let key = translateKeyControls(e.key);
+                keyInputs[key] = true;
             });
 
             document.addEventListener("keyup",function(e){
-                keyInputs[e.key] = false;
+                let key = translateKeyControls(e.key);
+                keyInputs[key] = false;
             });
 
             canvas.addEventListener("mousemove",function(e){
@@ -2006,6 +2028,8 @@
                 textureLoader.load("img/tree.png", 'tree');
                 textureLoader.load("img/bunny.png", 'bunny');
                 textureLoader.load("img/bunny-back.png", 'bunny_back');
+                textureLoader.load("img/bunny-side.png", 'bunny_side');
+                textureLoader.load("img/bunny-side2.png", 'bunny_side2');
                 textureLoader.onload(function(){
                     console.log("loaded");
                     let faceImg = textureLoader.imageList['face'];
