@@ -47,7 +47,10 @@
             <div class="key" data-key="d">D</div>
             <div class="key" data-key=" " style="flex-basis:calc(100% - 16px);">Space</div>
         </div>
-        <div id="map_edit_container" style="display:none;"><label for="map_code">Map layout code <input name="map_code" id="map_code" value=""/></label><button id="load_map_btn">load</button></div>
+        <div id="map_edit_container" style="display:none;">
+            <label for="map_code">Map layout code <input name="map_code" id="map_code" value=""/></label><button id="load_map_btn">load</button>
+            <select id="map_select"></select>
+        </div>
         <br><button id="map_edit_btn">map edit mode</button>
 
         <script>
@@ -98,9 +101,9 @@
                 gridY:0
             };
 
-            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,6+,09,4$,0*,:1,&8,\"(,**,:9,+.,#2-4.-06-&6-(\'";
-            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9!6="42#<<';
-            var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////"0-"0*"0\'"-:!33!=5##=#-7#,/#8<#<)"6\'#=%#=/#0(';
+            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,09,4$,0*,:1,&8,\"(,**,:9,+.,#2-%7-+'";
+            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9)42#<<&6=-\':-8<-$$,"=,1%,2%,3%,4%,5%,>.,=.,:%,7%,)$,)%,!!,#!,.>,0>,,>,2>,7+,-.,)0,!.,8:,7:,81,71,23';
+            var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////)0-)0*)0\')-:&33&=5##=#-7#,/#8<#<))6\'#=%#=/#0(-$.--"-73-<#,&%,\'%,\'&,&&,!/,"/,!.,!+,!&,\'!,,,,>>,81,51,68,78,:8,98,!<,*8,*9,,1,!1,4&,3&,:!,3(,9(,9),8),/:,0:,1:,2:,/<,/>,0<,1<,2<';
             var mapLevels = [
                 level_1,
                 level_2,
@@ -800,17 +803,22 @@
                     this.effectActive = true;
                     this.effectStart = performance.now();
                 }
-                sceneChange(deltaT, player){
+                sceneChange(deltaT, player, level){
                     let changeDuration = 1000;
                     let now = performance.now();
                     let alpha = (now - this.effectStart)/changeDuration;
                     if(alpha > 1){
                         alpha = 1;
                         if(now - this.effectStart > 2000){
-                            levelCounter++;
+                            if(level){
+                                levelCounter = level;
+                            }else{
+                                levelCounter++;
+                            }
                             if(levelCounter >= mapLevels.length) levelCounter = 0;
                             mapFromCode(mapLevels[levelCounter]);
                             generateWorld();
+                            generateMapCode();
                             player.xPos = 256;
                             player.yPos = 256;
                             this.effectStart = 0;
@@ -978,7 +986,7 @@
                     this._drawKeys();
                     
                     if(this.effectActive){
-                        this.sceneChange(deltaT, player);
+                        this.sceneChange(deltaT, player, null);
                     }
                 }
             }
@@ -2147,6 +2155,18 @@
 
             }
 
+            let select = document.getElementById("map_select")
+            for(var i = 0; i < mapLevels.length; i++){
+                let thisOption = document.createElement("option");
+                thisOption.text = 'Level ' + (i + 1);
+                thisOption.value = i;
+                select.appendChild(thisOption);
+            }
+            select.addEventListener("change", function(){
+                userInterface.sceneChange(0, player, this.value);
+            })
+            
+
             function isTouchDevice() {
             return (('ontouchstart' in window) ||
                 (navigator.maxTouchPoints > 0) ||
@@ -2218,6 +2238,7 @@
                     
                     mapFromCode(level_1);
                     generateWorld();
+                    generateMapCode();
                     play(0);
                 });
             });
