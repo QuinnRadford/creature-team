@@ -40,8 +40,8 @@
         <canvas id="camera" width="512" height="512">
 
         </canvas>
-        <div class="controls-container" id="touch_input_container">
-            <div></div><div class="key" data-key="w">W</div><div></div>
+        <div class="controls-container" id="touch_input_container" style="user-select: none;">
+            <div class="key" data-key="q">Q</div><div class="key" data-key="w">W</div><div class="key" data-key="e">E</div>
             <div class="key" data-key="a">A</div>
             <div class="key" data-key="s">S</div>
             <div class="key" data-key="d">D</div>
@@ -95,21 +95,22 @@
             var keyCount = {};
             var levelCounter = 0;
             var dataSquares = [];
+            var startingStrawbs = 0;
             var lastMouseAction = {
                 button:-1,
                 gridX:0,
                 gridY:0
             };
 
-            var level_1 = "/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,09,4$,0*,:1,&8,\"(,**,:9,+.,#2-%7-+'";
-            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9)42#<<&6=-\':-8<-$$,"=,1%,2%,3%,4%,5%,>.,=.,:%,7%,)$,)%,!!,#!,.>,0>,,>,2>,7+,-.,)0,!.,8:,7:,81,71,23';
-            var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////)0-)0*)0\')-:&33&=5##=#-7#,/#8<#<))6\'#=%#=/#0(-$.--"-73-<#,&%,\'%,\'&,&&,!/,"/,!.,!+,!&,\'!,,,,>>,81,51,68,78,:8,98,!<,*8,*9,,1,!1,4&,3&,:!,3(,9(,9),8),/:,0:,1:,2:,/<,/>,0<,1<,2<';
+            var level_1 = '/////////( (  #//( (  #//( (  #//( (  #//( (  #//(    #//( (  #//( (  #//( (  #//( (  #//( (  #//( (  #////.////. (    /. (    /. (    /. (    /. (    /. (    /. (    /.      /.      /.      /.      /.      /.      /.      /.      /.      /.      /////////&-/$8.*&,#0%,09,4$,0*,:1,&8,"(,**,:9,+.,#2-$7.$\'';
+            var level_2 = '////////(  $   !(  $   !(" $\'( !("&$ ( !("&$ ( !(" $$( !(" $$( !). \',( !)"&$$/#/)"&$$  !)" $   !(" $  "!(" $$ "!)"&\'//.!)"&$   !).     !)(  #/.!((&$" "!((&$. "!((    "!((  " "!/.\',//#+("" ( !!("" ( !!("" .//!("" (( !).  (($!(  \'(/,!(  $   !(  $   !////////#$9)42#<<&6=-$9-:<-$$,"=,1%,2%,3%,4%,5%,>.,=.,:%,7%,)$,)%,!!,#!,.>,0>,,>,2>,7+,-.,)0,!.,8:,7:,81,71,23.=!.,!.:>.<<.%=."8.$7.&(.),.+/';
+            var level_3 = '////////(   ( !!(   ( !!(   ( !!(-( (\'#!((( (\'#-(   ,/ %(   (\' %((( (\'"%(-( (\'"%(   (\'"!(  $(\'.!(  $($"!(  \'.$ !(!/,"\'//(!"$  !!(     !!(!"$  !!//.$" !!(! \'.//)(! $(  !)/#,(  !(   ( \'/(!#,( &!(!" ( &!/!" ( &!(!.\'/ \')(! $!  !(! $!  !(! $!+,!(! $ #,!////////)0-)0*)0\')-:&33&=5##=#-7#,/#8<#<))6\'#=%#=/#0(-!,-*"-52->$,&%,\'%,\'&,&&,!/,"/,!.,!+,!&,\'!,,,,>>,81,51,68,78,:8,98,!<,*8,*9,,1,!1,4&,3&,:!,3(,9(,9),8),/:,0:,1:,2:,/<,/>,0<,1<,2<.$!."-.,!.<&.=<.74.<5.#2.">.;/.=#.6)';
             var mapLevels = [
                 level_1,
                 level_2,
                 level_3
             ];
-            //for map canvas
+            //for map canvas 
             var mouseInput = {
                 x:0,
                 y:0,
@@ -127,6 +128,7 @@
             }
 
             var bulletImageRotation;
+            var netImageRotation;
 
             class ImageLoader{
                 promiseList = [];
@@ -316,7 +318,7 @@
                     }
                 }
                 animate(deltaT){
-                    if(keyInputs.s || keyInputs.w){
+                    if(keyInputs.s || keyInputs.w || keyInputs.e || keyInputs.q || keyInputs.q || keyInputs.e){
                         this.isWalking = true;
                         this.isAnimating = true;
                         if(this.lastStep == 0)soundLoader.soundList['ambiance'].play();
@@ -585,7 +587,7 @@
                     let xRelative = ( this.xPos - player.xPos)/gridSize;
                     let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
                     if(playerDistance < 0.3){
-                        if(performance.now() - this.lastSound > 1000 && (keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
+                        if(performance.now() - this.lastSound > 1000 && (keyInputs.q || keyInputs.e || keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
                             soundLoader.soundList['bush'].currentTime = 0;
                             soundLoader.soundList['bush'].play();
                             this.lastSound = performance.now();
@@ -620,8 +622,9 @@
                         let xRelative = ( this.xPos - player.xPos)/gridSize;
                         let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
                         if(playerDistance < 0.2){
-                            if(performance.now() - this.lastSound > 1000 && (keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
+                            if(performance.now() - this.lastSound > 1000 && (keyInputs.q || keyInputs.e || keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
                                 soundLoader.soundList['bush'].play();
+                                startingStrawbs = strawbCount;
                                 this.lastSound = performance.now();
                                 userInterface.startSceneChange();
                             }
@@ -640,6 +643,8 @@
                 isOpen;
                 splashImg;
                 lastFlash = 0;
+                buttonText = "START";
+                fontSize = 28;
 
                 constructor(ctx, splashImg){
                     this.ctx = ctx;
@@ -651,14 +656,19 @@
                     this.isOpen = false;
                 }
                 open(){
+                    canvas.style.visibility = "hidden";
                     this.isOpen = true;
+                }
+
+                buttonAction(){
+                    canvas.style.visibility = "visible";
+                    this.close();
                 }
 
                 draw(deltaT){
 
                     if((mouseInput_game.y > this.ctx.canvas.height - 100 && mouseInput_game.click)|| keyInputs[" "]){
-                        canvas.style.visibility = "visible";
-                        this.close();
+                        this.buttonAction();
                         return true;
                     }else{
                         canvas.style.visibility = "hidden";
@@ -669,8 +679,8 @@
                     this.ctx.save();
                     this.ctx.fillStyle = "white";
                     this.ctx.textAlign = "center";
-                    this.ctx.font = "28px sans-serif";
-                    this.ctx.fillText("START", this.ctx.canvas.width/2, this.ctx.canvas.height - 40);
+                    this.ctx.font = this.fontSize + "px sans-serif";
+                    this.ctx.fillText(this.buttonText, this.ctx.canvas.width/2, this.ctx.canvas.height - 40);
                     if(performance.now() -  this.lastFlash >= 500){
                         if(performance.now() -  this.lastFlash >= 1000){
                         this.lastFlash = performance.now();
@@ -709,6 +719,21 @@
 
             }
 
+            class DefeatSplash extends Splash{
+                constructor(ctx, splashImg){
+                    super(ctx, splashImg);
+                    this.buttonText = "Continue";
+                    this.fontSize = 22;
+                }
+                buttonAction(){
+                    strawbCount = startingStrawbs;
+                    userInterface.sceneChange(0, player, levelCounter);
+                    soundLoader.soundList['defeat'].pause();
+                    defaultSoundLevels();
+                    super.buttonAction();
+                }
+            }
+
             class UserInterface{
                 /** @type {CanvasRenderingContext2D} */
                 ctx;
@@ -729,6 +754,8 @@
                 blushStart = 0;
                 effectStart = 0;
                 effectActive = false;
+                health = 100;
+                defeatActive = false;
 
                 constructor(ctx, faceImg, blink, closed, blush){
                     this.ctx = ctx;
@@ -773,10 +800,24 @@
                         this.oldScore = strawbCount;
                         this.setBlush();
                         soundLoader.soundList['bleat'].play();
+                        this.heal(20);
                         if(sceneScore == sceneGoal){
                             teleporter.active = true;
                         }
                     }
+                }
+                hit(){
+                    this.health = Math.max(0, this.health - 10);
+                    if(this.health == 0){
+                        if(!userInterface.defeatActive) userInterface.defeat();
+                    }else{
+                        soundLoader.soundList['bleat_hurt'].currentTime = 0;
+                        soundLoader.soundList['bleat_hurt'].play();
+                    }
+                    
+                }
+                heal(points){
+                    this.health = Math.min(100, this.health + points);
                 }
 
                 setBlinking(){
@@ -810,7 +851,7 @@
                     if(alpha > 1){
                         alpha = 1;
                         if(now - this.effectStart > 2000){
-                            if(level){
+                            if(level !== null){
                                 levelCounter = level;
                             }else{
                                 levelCounter++;
@@ -833,7 +874,47 @@
                     this.ctx.font = "bold 32px sans-serif"
                     this.ctx.fillText("Zzzz...",255,255);
                     this.ctx.restore();
+                }
+                defeat(){
+                    this.effectActive = true;
+                    this.effectStart = performance.now();
+                    this.defeatActive = true;
+                    
+                    for(const sound in soundLoader.soundList){
+                        soundLoader.soundList[sound].volume = 0.4;
+                    }
+                    soundLoader.soundList['defeat'].volume = 1;
+                    soundLoader.soundList['defeat'].play();
+                }
+                _defeat(){
+                    let changeDuration = 1000;
+                    let now = performance.now();
+                    let alpha = (now - this.effectStart)/changeDuration;
 
+
+                    for(const sound in soundLoader.soundList){
+                        if(sound != 'defeat') soundLoader.soundList[sound].volume = Math.max(0, 0.4 - (0.4 * alpha));
+                    }
+
+                    if(alpha > 1){
+                        alpha = 1;
+                        if(now - this.effectStart > 2000){
+                            splashScreen = new DefeatSplash(ctxCamera, textureLoader.imageList['defeat_splash']);
+                            this.defeatActive = false;
+                            return false;
+                        }
+                    }
+
+                    
+                    this.ctx.save();
+                    this.ctx.fillStyle = "rgba(0,0,0,"+alpha.toFixed(2)+")";
+                    this.ctx.fillRect(0,0,this.ctx.canvas.width, this.ctx.canvas.height);
+                    this.ctx.fillStyle = "rgba(255,255,255,"+alpha.toFixed(2)+")";
+                    this.ctx.textAlign = "center";
+                    this.ctx.font = "bold 32px sans-serif"
+                    this.ctx.fillText("CAPTURED",255,255);
+                    
+                    this.ctx.restore();
                 }
 
                 _drawReadyNest(){
@@ -903,6 +984,18 @@
                     this.ctx.textAlign = "center";
                     this.ctx.fillStyle = "white";
                     this.ctx.fillText(strawbCount, this.faceSize + this.borderWidth + this.insetWidth + (scoreBox - 2*(this.borderWidth + this.insetWidth))/2, this.ctx.canvas.height - (2*this.borderWidth + this.insetWidth) - 4);
+                    this.ctx.restore();
+                }
+
+                _drawHealth(){
+                    let scoreBox = 50;
+                    this.ctx.save();
+                    this._drawInsetBox(this.faceSize, 0 - scoreBox - scoreBox, scoreBox, 25);
+                    this.ctx.font = "12px sans-serif";
+                    this.ctx.textAlign = "center";
+                    this.ctx.fillStyle = "white";
+                    this.ctx.fillText(this.health,this.faceSize + this.borderWidth + this.insetWidth + (scoreBox - 2*(this.borderWidth + this.insetWidth))/2,this.ctx.canvas.height - this.faceSize - 8);
+
                     this.ctx.restore();
                 }
 
@@ -977,6 +1070,7 @@
                 draw(deltaT, player){
                     this._drawFaceFrame();
                     this._drawScore();
+                    this._drawHealth();
                     this._drawRemaining()
                     this._nearestArrow(player);
                     if(sceneScore == sceneGoal){
@@ -986,7 +1080,11 @@
                     this._drawKeys();
                     
                     if(this.effectActive){
-                        this.sceneChange(deltaT, player, null);
+                        if(this.defeatActive){
+                            this._defeat();
+                        }else{
+                            this.sceneChange(deltaT, player, null);
+                        }
                     }
                 }
             }
@@ -1041,6 +1139,162 @@
                     if(this.seen || MAP_EDIT_MODE){
                         this.ctx.save();
                         this.ctx.fillStyle = "green";
+                        this.ctx.beginPath();
+                        this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
+                        this.ctx.fill();
+                        this.ctx.restore();
+                    }
+                }
+            }
+
+            class RobotSprite extends Sprite{
+                lastFire = 0;
+                fireRate = 3000;
+                lastAlert = 0;
+                alertDelay = 1000;
+                sound;
+
+                constructor(ctx, image, xPos, yPos, zPos, width, height){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                    this.directionX = 0;
+                    this.directionY = 0;
+                    this.hopLength = 15;
+                    this.hopProgress = 0;
+                    this.speed = 5;
+                    this.isMoving = false;
+                    this.health = 3;
+                    this.isAlive = true;
+                    this.alertDelay += Math.round(Math.random() * 2000);
+                    this.sound = soundLoader.soundList['alarm'].cloneNode();
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                    
+                }
+                _chooseDirection(){
+                    let direction = Math.random() * 2*Math.PI;
+                    this.directionY = Math.sin(direction);
+                    this.directionX = Math.cos(direction);
+                }
+                pickHop(){
+                    this._chooseDirection();
+                    while(true){
+                        let hopDestX = (this.xPos + (this.directionX*this.hopLength))/gridSize;
+                        let hopDestY = (this.yPos + (this.directionY*this.hopLength))/gridSize;
+                        if(hopDestX < 0 || hopDestY < 0 || hopDestX > dataSquares.length || hopDestY > dataSquares.length || dataSquares[Math.floor(hopDestX)][Math.floor(hopDestY)].blocked || gridSquares[Math.floor(hopDestX)][Math.floor(hopDestY)]){
+                            this._chooseDirection()
+                        }else{
+                            break;
+                        }
+                    }
+                    this.hopProgress = 0;
+                    this.isMoving = true;
+                }
+                hit(){
+                    this.health -= 1;
+                    if(this.health <= 0 ){
+                        this.isAlive = false;
+                    }
+                }
+                update(deltaT){
+                    if(!this.isAlive) return true;
+                    if(this.isMoving == false){
+                        this.pickHop();
+                    }
+                    
+                    let frameDistance = this.speed*(deltaT/1000);
+
+                    if(!this.isAlert && this.hopProgress + frameDistance > this.hopLength){
+                        frameDistance = this.hopLength - this.hopProgress;
+                        this.isMoving = false;
+                    }
+                    this.hopProgress += frameDistance;
+                    this.xPos += (this.directionX*frameDistance);
+                    this.yPos += (this.directionY*frameDistance);
+                    if(dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked || gridSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)]){
+                        this.isMoving == false;
+                    }
+                }
+
+                fire(){
+                    var now = performance.now();
+                    if(this.lastFire + this.fireRate <= now){
+                        this.lastFire = now;
+                        let bulletOffset = 4;
+                        let newBullet = new BulletSprite(ctx, textureLoader.imageList['net'], this.xPos + (bulletOffset * this.directionX), this.yPos + (bulletOffset * this.directionY), 0, gridSize, gridSize, netImageRotation)
+                        newBullet.targetsPlayers = true;
+                        newBullet.speed = 80;
+                        newBullet.directionX = this.directionX;
+                        newBullet.directionY = this.directionY;
+                        spriteList.push(newBullet);
+                    }
+                }
+
+                draw(player){
+
+                    let playerAngle = Math.atan2(this.yPos - player.yPos, this.xPos - player.xPos);
+                    let py = Math.sin(playerAngle);
+                    let px = Math.cos(playerAngle);
+
+                    let dot = this.directionY * py + this.directionX * px;
+                    let cross = this.directionX * py - this.directionY * px;
+                    
+                    if(this.isAlive){
+                        if(dot < 0){
+                            let playerAngle2 = Math.atan2(player.yPos - this.yPos, player.xPos - this.xPos);
+                            //check if it can see the player
+                            //start and end points in grid space
+                            let startCellX = this.xPos/gridSize;
+                            let startCellY = this.yPos/gridSize;
+
+                            let yRelative = ( this.yPos - player.yPos)/gridSize;
+                            let xRelative = ( this.xPos - player.xPos)/gridSize;
+                            let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+
+                            let intersect = castRay(playerAngle2, startCellX, startCellY);
+
+                            if(intersect && intersect.rayLength < playerDistance){
+                                this.isAlert = false;
+                            }else{
+                                if(!this.isAlert){
+                                    this.lastAlert = performance.now();
+                                    this.sound.volume = 0.1 +   Math.max(0, (0.9 * (1-(playerDistance/15))))
+                                    this.sound.play();
+                                }
+                                
+                                this.isAlert = true;
+                                
+                                this.directionY = Math.sin(playerAngle2);
+                                this.directionX = Math.cos(playerAngle2);
+                            }
+
+                            this.image = textureLoader.imageList['robo'];
+
+                            if(this.isAlert && (this.lastAlert + this.alertDelay < performance.now())){
+                                this.fire();
+                            }
+                            
+                        }else{
+                            this.image = textureLoader.imageList['robo_back'];
+                            this.isAlert = false;
+                        }
+                    }else{
+                        if(dot < 0){
+                            this.image = textureLoader.imageList['robo_destroyed']
+                        }else{
+                            this.image = textureLoader.imageList['robo_back_destroyed']
+                        }
+                    }
+
+                    if(!this.active) return true;
+                    if(this.seen || MAP_EDIT_MODE){
+                        this.ctx.save();
+                        if(this.isAlert){
+                            this.ctx.fillStyle = "orange";
+                        }else{
+                            this.ctx.fillStyle = "blue";
+                        }
                         this.ctx.beginPath();
                         this.ctx.arc(Math.round(this.xPos), Math.round(this.yPos), 4, 0, 2*Math.PI);
                         this.ctx.fill();
@@ -1188,6 +1442,7 @@
                 hitTime = 0;
                 hitLength = 200;
                 isHit = false;
+                targetsPlayers = false;
                 
                 constructor(ctx, image, xPos, yPos, zPos, width, height, animatedImg){
                     super(ctx, image, xPos, yPos, zPos, width, height);
@@ -1211,6 +1466,12 @@
                         let gridY = Math.floor(nextYPos/gridSize);
                         let hitRadius = gridSize/4;
 
+                        if(Math.abs(player.xPos - nextXPos) < (hitRadius) && Math.abs(player.yPos - nextYPos) < (hitRadius)){
+                            this.hit();
+                            userInterface.hit();
+                            return true;
+                        }
+
                         if(gridSquares[gridX] && gridSquares[gridX][gridY]){
                             this.hit();
                             return true;
@@ -1231,6 +1492,10 @@
                             if(spriteList[i]){
                                 if(Math.abs(spriteList[i].xPos - nextXPos) < (hitRadius) && Math.abs(spriteList[i].yPos - nextYPos) < (hitRadius)){
                                     if(spriteList[i] instanceof BunnySprite){
+                                        this.hit();
+                                        return true;
+                                    }else if(spriteList[i] instanceof RobotSprite){
+                                        spriteList[i].hit();
                                         this.hit();
                                         return true;
                                     }
@@ -1387,47 +1652,91 @@
                 animate(deltaT){
                     let dy = 0;
                     let dx = 0;
-                    if(keyInputs.w){
-                        dy -= this.speed * deltaT/1000;
-                    }
-                    if(keyInputs.s){
-                        dy += this.speed * deltaT/1000;
-                    }
+                    var nextY = this.yPos;
+                    var nextX = this.xPos;
 
                     
+
+                    if(keyInputs.e || keyInputs.q){
+                        
+                        let viewAngle = Math.atan2(this.directionY, this.directionX);
+
+                        let moveAngle = (Math.PI/2);
+
+                        if(keyInputs.w){
+                            moveAngle =  (Math.PI/4);
+                            if(keyInputs.q){
+                                moveAngle = (Math.PI/2)  +  (Math.PI/4);
+                            }
+                        }
+                        if(keyInputs.s){
+                            moveAngle = -1 * (Math.PI/4) + (Math.PI/2) ;
+                            if(keyInputs.e){
+                                moveAngle = (Math.PI/2)  +  (Math.PI/4);
+                            }
+                        }
+
+
+                        let newAngle = viewAngle + moveAngle; //some number of radians
+                        let strafeY = Math.sin(newAngle);
+                        let strafeX = Math.cos(newAngle);
+                        let strafeDy = 0;
+                        if(keyInputs.q){
+                            strafeDy += this.speed * deltaT/1000;
+                            
+                        }
+                        if(keyInputs.e){
+                            strafeDy -= this.speed * deltaT/1000;
+                        }
+
+                        nextY = this.yPos - strafeY*strafeDy;
+                        nextX = this.xPos - strafeX*strafeDy;
+                        
+                    }else{
+                        if(keyInputs.w){
+                            dy -= this.speed * deltaT/1000;
+                        }
+                        if(keyInputs.s){
+                            dy += this.speed * deltaT/1000;
+                        }
+                    }
+
                     if(keyInputs.a){
                         dx -= this.rSpeed * deltaT/1000;
                     }
+
                     if(keyInputs.d){
                         dx += this.rSpeed * deltaT/1000;
                     }
 
+                    
+
                     if(dx != 0){
                         let viewAngle = Math.atan2(this.directionY, this.directionX);
-                        let newAngle = viewAngle + ( dx * 0.0174533);
+                        let newAngle = viewAngle + ( dx * 0.0174533); //some number of radians
                         this.directionY = Math.sin(newAngle);
                         this.directionX = Math.cos(newAngle);
                     }
 
                     if(dy != 0){
                         let viewAngle = Math.atan2(this.directionY, this.directionX);
-                        let nextY = this.yPos - Math.sin(viewAngle)*dy;
-                        let nextX = this.xPos - Math.cos(viewAngle)*dy;
-
-                        let nextGridY = Math.floor(nextY/gridSize);
-                        let nextGridX = Math.floor(nextX/gridSize);
-
-                        if(gridSquares[nextGridX] && !gridSquares[nextGridX][nextGridY] && !dataSquares[nextGridX][nextGridY].blocked){
-                            this.yPos = nextY;
-                            this.xPos = nextX;
-                        }
-
-                        this.yPos = Math.max(this.yPos, 0);
-                        this.yPos = Math.min(this.yPos, ctx.canvas.height);
-
-                        this.xPos = Math.max(this.xPos, 0);
-                        this.xPos = Math.min(this.xPos, ctx.canvas.width);
+                        nextY = this.yPos - Math.sin(viewAngle)*dy;
+                        nextX = this.xPos - Math.cos(viewAngle)*dy;
                     }
+
+                    let nextGridY = Math.floor(nextY/gridSize);
+                    let nextGridX = Math.floor(nextX/gridSize);
+
+                    if(gridSquares[nextGridX] && !gridSquares[nextGridX][nextGridY] && !dataSquares[nextGridX][nextGridY].blocked){
+                        this.yPos = nextY;
+                        this.xPos = nextX;
+                    }
+
+                    this.yPos = Math.max(this.yPos, 0);
+                    this.yPos = Math.min(this.yPos, ctx.canvas.height);
+
+                    this.xPos = Math.max(this.xPos, 0);
+                    this.xPos = Math.min(this.xPos, ctx.canvas.width);
 
 
                     if(keyInputs[' '] && !splashScreen.isOpen){
@@ -1497,6 +1806,8 @@
                                 }
                                 if(mouseInput.click && keyInputs.b){
                                     spriteList.push(new BunnySprite(ctx, textureLoader.imageList['bunny'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
+                                }else if(mouseInput.click && keyInputs.r){
+                                    spriteList.push(new RobotSprite(ctx, textureLoader.imageList['robo'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
                                 }else if(mouseInput.click && keyInputs.t){
                                     spriteList.push(new TreeSprite(ctx, textureLoader.imageList['tree'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, 0, gridSize, gridSize, 1));
                                 }else if(mouseInput.click){
@@ -1839,7 +2150,7 @@
                 }
 
                 for(var i = 0; i < spriteList.length; i++){
-                    if(spriteList[i] instanceof BunnySprite || spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite || spriteList[i] instanceof TreeSprite){
+                    if(spriteList[i] instanceof RobotSprite || spriteList[i] instanceof BunnySprite || spriteList[i] instanceof DoorSprite || spriteList[i] instanceof KeySprite || spriteList[i] instanceof TreeSprite){
                         let type;
                         if(spriteList[i] instanceof DoorSprite){
                             if(spriteList[i].direction == 'x'){
@@ -1853,6 +2164,8 @@
                             type = 12;
                         } else if(spriteList[i] instanceof BunnySprite){
                             type = 13;
+                        } else if(spriteList[i] instanceof RobotSprite){
+                            type = 14;
                         }
                         binaryString += String.fromCodePoint(type + 32);
                         binaryString += String.fromCodePoint(Math.floor(spriteList[i].xPos/gridSize) + 32);
@@ -1934,6 +2247,9 @@
                         break;
                         case 13: //bunny
                             spriteList.push(new BunnySprite(ctx, textureLoader.imageList['bunny'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize));
+                        break;
+                        case 14: //robo
+                            spriteList.push(new RobotSprite(ctx, textureLoader.imageList['robo'], gridX*gridSize + gridSize/2, gridY*gridSize + gridSize/2, gridSize, gridSize));
                         break;
                     }
                 }
@@ -2179,23 +2495,39 @@
                 canvas.style.display = "none";
                 map_edit_btn.style.display = "none";
             }
+            soundLoader.load("sound/defeat.mp3", "defeat");
+            soundLoader.load("sound/alarm.mp3", "alarm");
+            soundLoader.load("sound/bleat_hurt.mp3", "bleat_hurt");
             soundLoader.load("sound/hit.mp3", "hit");
             soundLoader.load("sound/shoot.mp3", "shoot");
             soundLoader.load("sound/unlock.mp3", "unlock");
-            soundLoader.soundList['unlock'].volume = 0.4;
+            
             soundLoader.load("sound/key.mp3", "key");
-            soundLoader.soundList['key'].volume = 0.4;
+            
             soundLoader.load("sound/bush.mp3", "bush");
-            soundLoader.soundList['bush'].volume = 0.4;
+            
             soundLoader.load("sound/ambiance.mp3", "ambiance");
-            soundLoader.soundList['ambiance'].volume = 0.4;
+            
             soundLoader.soundList['ambiance'].loop = true;
             soundLoader.load("sound/bleat.mp3", "bleat");
             soundLoader.load("sound/step1.mp3", "step1");
-            soundLoader.soundList['step1'].volume = 0.3;
+            
             soundLoader.load("sound/step2.mp3", "step2");
-            soundLoader.soundList['step2'].volume = 0.3;
+            
+            function defaultSoundLevels(){
+                for(const sound in soundLoader.soundList){
+                    soundLoader.soundList[sound].volume = 1;
+                }
+                soundLoader.soundList['unlock'].volume = 0.4;
+                soundLoader.soundList['key'].volume = 0.4;
+                soundLoader.soundList['bush'].volume = 0.4;
+                soundLoader.soundList['ambiance'].volume = 0.3;
+                soundLoader.soundList['step1'].volume = 0.3;
+                soundLoader.soundList['step2'].volume = 0.3;
+            }
+
             soundLoader.onload(function(){
+                defaultSoundLevels();
                 textureLoader.load("img/key.png", 'key');
                 textureLoader.load("img/key_bronze.png", 'key_bronze');
                 textureLoader.load("img/key_silver.png", 'key_silver');
@@ -2225,7 +2557,13 @@
                 textureLoader.load("img/bunny.png", 'bunny');
                 textureLoader.load("img/bunny-back.png", 'bunny_back');
                 textureLoader.load("img/bullet_glow.png", 'bullet_glow');
+                textureLoader.load("img/robo.png", 'robo');
+                textureLoader.load("img/robo_back.png", 'robo_back');
+                textureLoader.load("img/robo_destroyed.png", 'robo_destroyed');
+                textureLoader.load("img/robo_back_destroyed.png", 'robo_back_destroyed');
                 textureLoader.load("img/hit.png", 'hit');
+                textureLoader.load("img/net_bullet.png", 'net');
+                textureLoader.load("img/defeat_splash.png", 'defeat_splash');
                 textureLoader.onload(function(){
                     console.log("loaded");
                     let faceImg = textureLoader.imageList['face'];
@@ -2233,6 +2571,7 @@
                     let faceClose = textureLoader.imageList['face-close'];
                     let faceBlush = textureLoader.imageList['face-blush'];
                     bulletImageRotation = precalculateImageRotation(textureLoader.imageList['bullet'], [textureLoader.imageList['bullet_glow']], 32, 64, 64);
+                    netImageRotation = precalculateImageRotation(textureLoader.imageList['net'], [], 32, 128, 128);
                     userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
                     splashScreen = new Splash(ctxCamera, textureLoader.imageList['splash']);
                     
