@@ -122,6 +122,8 @@
                 middleClick:false
             }
 
+            var bulletImageRotation;
+
             class ImageLoader{
                 promiseList = [];
                 imageList = {};
@@ -142,6 +144,27 @@
                 onload(callback){
                     Promise.all(this.promiseList).then(callback);
                 }
+            }
+
+            function precalculateImageRotation(image, effects, frames, width, height){
+                let outputImg = [];
+                let renderCanvas = new OffscreenCanvas(width,height);
+                let ctx = renderCanvas.getContext("2d");
+                for(var i = 0; i < frames; i++){ 
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                    ctx.save();
+                    ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
+                    ctx.rotate((360/frames) * i *  Math.PI/180);
+                    ctx.translate(-1* ctx.canvas.width/2, -1* ctx.canvas.height/2);
+                    ctx.drawImage(image, 0,0,width,height);
+                    ctx.restore();
+                    for(var ii = 0; ii < effects.length; ii++){
+                        ctx.drawImage(effects[ii], 0,0,width,height);
+                    }
+                    outputImg.push(renderCanvas.transferToImageBitmap());
+                    
+                }
+                return outputImg;
             }
 
             class SoundLoader{
@@ -260,6 +283,10 @@
                 height = 240;
                 lastStep = 0;
                 lastStepType = 1;
+                shootStart = 0;
+                shootLength = 250
+                isShooting;
+                lastShotImg = 1;
 
                 constructor(ctx){
                     this.ctx = ctx;
@@ -268,7 +295,7 @@
                     this.screenX = ctx.canvas.height - this.screenX;
                     this.topLimit += this.screenY;
                     this.bottomLimit += this.screenY;
-
+                    
                 }
 
                 playWalkSound(){
@@ -315,14 +342,41 @@
 
                     }
 
+                    
+
                     if(this.isWalking){
                         this.playWalkSound();
                     }
                     
                 }
+                shoot(){
+                    this.shootStart = performance.now();
+                    this.isShooting = true;
+                    this.lastShotImg +=  Math.ceil(Math.random()*2);
+                    soundLoader.soundList['shoot'].currentTime = 0;
+                    soundLoader.soundList['shoot'].play();
+                    if(this.lastShotImg > 3) this.lastShotImg -= 3;
+                }
 
                 draw(){
+                    if(this.isShooting){
+                        
+                        var shootTime = performance.now() -  this.shootStart;
+
+                        if(shootTime > this.shootLength){
+                            this.isShooting = false;
+                        }else{
+                            this.ctx.save();
+                            this.ctx.globalAlpha = 1 - (shootTime/this.shootLength);
+
+                            this.ctx.drawImage(textureLoader.imageList['shoot_'+this.lastShotImg], Math.round(this.screenX) - 120, Math.round(this.screenY)-120, 256, 256);
+                            this.ctx.drawImage(textureLoader.imageList['hoof_blue'], Math.round(this.screenX-8), Math.round(this.screenY-8), this.width+16, this.height+16);
+                            this.ctx.restore();
+                            
+                        }
+                    }
                     this.ctx.drawImage(textureLoader.imageList['hoof'], Math.round(this.screenX), Math.round(this.screenY), this.width, this.height);
+                    
                 }
 
             }
@@ -340,7 +394,7 @@
                 image;
                 width;
                 distance;
-                active = true;
+                active = true;wd
                 seen = false;
                 delete = false;
 
@@ -528,6 +582,7 @@
                     let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
                     if(playerDistance < 0.3){
                         if(performance.now() - this.lastSound > 1000 && (keyInputs.w || keyInputs.a || keyInputs.s || keyInputs.d)){
+                            soundLoader.soundList['bush'].currentTime = 0;
                             soundLoader.soundList['bush'].play();
                             this.lastSound = performance.now();
                         }
@@ -780,7 +835,7 @@
                     this.ctx.font = "bold 20px sans-serif"
                     this.ctx.fillText("Ready to nest",255,32);
                     this.ctx.restore();
-                }
+                } 
 
                 _drawRemaining(){
                     this.ctx.save();
@@ -1116,6 +1171,95 @@
                 }
             }
 
+            class BulletSprite extends Sprite{
+                speed = 200;
+                rSpeed = 180;
+                animatedImg = [];
+                roll = 0;
+                hitTime = 0;
+                hitLength = 200;
+                isHit = false;
+                
+                constructor(ctx, image, xPos, yPos, zPos, width, height, animatedImg){
+                    super(ctx, image, xPos, yPos, zPos, width, height);
+                    this.animatedImg = animatedImg;
+                }
+
+                isVisible(player, rayIntersections){
+                    super.isVisible(player, rayIntersections);
+                }
+
+                update(deltaT){
+                    if(this.isHit){
+                        if(performance.now() - this.hitTime >= this.hitLength){
+                            this.deleteSprite();
+                        }
+                    }else{
+                        let distance = this.speed*deltaT/1000;
+                        let nextXPos = this.xPos + this.directionX * distance;
+                        let nextYPos = this.yPos + this.directionY * distance;
+                        let gridX = Math.floor(nextXPos/gridSize);
+                        let gridY = Math.floor(nextYPos/gridSize);
+                        let hitRadius = gridSize/4;
+
+                        if(gridSquares[gridX] && gridSquares[gridX][gridY]){
+                            this.hit();
+                            return true;
+                        }
+
+                        if(dataSquares[gridX] && dataSquares[gridX][gridY] && dataSquares[gridX][gridY].blocked){
+                            if(dataSquares[gridX][gridY].blockedBy instanceof DoorSprite){
+                                this.hit();
+                                return true;
+                            } else if(Math.abs((gridX*gridSize + (gridSize/2)) - nextXPos) < (hitRadius) && Math.abs((gridY*gridSize + (gridSize/2)) - nextYPos) < (hitRadius)){
+                                this.hit();
+                                return true;
+                            }
+                        }
+
+                        
+                        for(var i = 0 ; i < spriteList.length; i++){
+                            if(spriteList[i]){
+                                if(Math.abs(spriteList[i].xPos - nextXPos) < (hitRadius) && Math.abs(spriteList[i].yPos - nextYPos) < (hitRadius)){
+                                    if(spriteList[i] instanceof BunnySprite){
+                                        this.hit();
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+
+
+                        this.xPos = nextXPos;
+                        this.yPos = nextYPos;
+
+                        this.roll += this.rSpeed * deltaT/1000;
+                        if(this.roll > 360) this.roll -= 360;
+                        
+                        this.image = this.animatedImg[Math.floor((this.animatedImg.length-1) * (this.roll/360))];
+
+                        
+
+                        //left the play field
+                        if(gridX < 0 || gridX > gridSquares.length || gridY < 0 || gridY > gridSquares[0].length){
+                            this.deleteSprite();
+                        }
+                    }
+                }
+
+                hit(){
+                    this.hitTime = performance.now();
+                    soundLoader.soundList['hit'].currentTime = 0;
+                    soundLoader.soundList['hit'].play();
+                    this.isHit = true;
+                    this.image = textureLoader.imageList['hit'];
+                }
+
+                draw(player){
+                    if(!this.active) return true;
+                }
+            }
+
             class DoorSprite extends Sprite{
                 direction;
                 open = false;
@@ -1207,8 +1351,10 @@
                 yPos;
                 speed = 80;
                 rSpeed = 200;
-                directionX = 0;
+                directionX = 1;
                 directionY = 0;
+                lastFire = 0;
+                fireRate = 250;
 
                 constructor(ctx, xPos, yPos){
                     this.ctx = ctx;
@@ -1230,7 +1376,6 @@
                     this.ctx.restore();
                 }
                 animate(deltaT){
-
                     let dy = 0;
                     let dx = 0;
                     if(keyInputs.w){
@@ -1273,6 +1418,20 @@
 
                         this.xPos = Math.max(this.xPos, 0);
                         this.xPos = Math.min(this.xPos, ctx.canvas.width);
+                    }
+
+
+                    if(keyInputs[' '] && !splashScreen.isOpen){
+                        var now = performance.now();
+                        if(this.lastFire + this.fireRate <= now){
+                            this.lastFire = now;
+                            let bulletOffset = 4;
+                            let newBullet = new BulletSprite(ctx, textureLoader.imageList['bullet'], this.xPos + (bulletOffset * this.directionX), this.yPos + (bulletOffset * this.directionY), 0, gridSize, gridSize, bulletImageRotation)
+                            newBullet.directionX = this.directionX;
+                            newBullet.directionY = this.directionY;
+                            spriteList.push(newBullet);
+                            hoof.shoot();
+                        }
                     }
                 }
             }
@@ -1999,7 +2158,8 @@
                 canvas.style.display = "none";
                 map_edit_btn.style.display = "none";
             }
-
+            soundLoader.load("sound/hit.mp3", "hit");
+            soundLoader.load("sound/shoot.mp3", "shoot");
             soundLoader.load("sound/unlock.mp3", "unlock");
             soundLoader.soundList['unlock'].volume = 0.4;
             soundLoader.load("sound/key.mp3", "key");
@@ -2023,11 +2183,16 @@
                 textureLoader.load("img/door_bronze.png", 'door_bronze');
                 textureLoader.load("img/door-open.png", 'door-open');
                 textureLoader.load("img/bed.png", 'bed');
+                textureLoader.load("img/bullet.png", 'bullet');
                 textureLoader.load("img/wall1.png", 'wall1');
                 textureLoader.load("img/wall2.png", 'wall2');
                 textureLoader.load("img/wall3.png", 'wall3');
                 textureLoader.load("img/wall4.png", 'wall4');
+                textureLoader.load("img/shoot_1.png", 'shoot_1');
+                textureLoader.load("img/shoot_2.png", 'shoot_2');
+                textureLoader.load("img/shoot_3.png", 'shoot_3');
                 textureLoader.load("img/hoof.png", 'hoof');
+                textureLoader.load("img/hoof_blue.png", 'hoof_blue');
                 textureLoader.load("img/strawb.png", 'strawb');
                 textureLoader.load("img/deer-face.png", 'face');
                 textureLoader.load("img/deer-face-blink.png", 'face-blink');
@@ -2038,12 +2203,15 @@
                 textureLoader.load("img/tree.png", 'tree');
                 textureLoader.load("img/bunny.png", 'bunny');
                 textureLoader.load("img/bunny-back.png", 'bunny_back');
+                textureLoader.load("img/bullet_glow.png", 'bullet_glow');
+                textureLoader.load("img/hit.png", 'hit');
                 textureLoader.onload(function(){
                     console.log("loaded");
                     let faceImg = textureLoader.imageList['face'];
                     let faceBlink = textureLoader.imageList['face-blink'];
                     let faceClose = textureLoader.imageList['face-close'];
                     let faceBlush = textureLoader.imageList['face-blush'];
+                    bulletImageRotation = precalculateImageRotation(textureLoader.imageList['bullet'], [textureLoader.imageList['bullet_glow']], 32, 64, 64);
                     userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
                     splashScreen = new Splash(ctxCamera, textureLoader.imageList['splash']);
                     
