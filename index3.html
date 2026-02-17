@@ -1205,11 +1205,13 @@
                 }
                 pickHop(){
                     this._chooseDirection();
-                    while(true){
+                    let tryCount = 0;
+                    while(tryCount < 25){
                         let hopDestX = (this.xPos + (this.directionX*this.hopLength))/gridSize;
                         let hopDestY = (this.yPos + (this.directionY*this.hopLength))/gridSize;
                         if(hopDestX < 0 || hopDestY < 0 || hopDestX > dataSquares.length || hopDestY > dataSquares.length || dataSquares[Math.floor(hopDestX)][Math.floor(hopDestY)].blocked || gridSquares[Math.floor(hopDestX)][Math.floor(hopDestY)]){
-                            this._chooseDirection()
+                            tryCount++;
+                            this._chooseDirection();
                         }else{
                             break;
                         }
@@ -1236,10 +1238,15 @@
                         this.isMoving = false;
                     }
                     this.hopProgress += frameDistance;
-                    this.xPos += (this.directionX*frameDistance);
-                    this.yPos += (this.directionY*frameDistance);
-                    if(dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked || gridSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)]){
-                        this.isMoving == false;
+                    
+                    let nextX = this.xPos + (this.directionX*frameDistance);
+                    let nextY = this.yPos + (this.directionY*frameDistance);
+                    
+                    if(dataSquares[Math.floor(nextX/gridSize)][Math.floor(nextY/gridSize)].blocked || gridSquares[Math.floor(nextX/gridSize)][Math.floor(nextY/gridSize)]){
+                        this.isMoving = false;
+                    }else{
+                        this.xPos = nextX;
+                        this.yPos = nextY;
                     }
                 }
 
