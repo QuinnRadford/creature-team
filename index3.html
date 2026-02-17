@@ -158,6 +158,7 @@
 
             class ImageLoader{
                 promiseList = [];
+                mipsList = {};
                 imageList = {};
                 constructor(){
 
@@ -171,6 +172,54 @@
                         imageLoader.imageList[name].onerror = function(){return reject();}
                         imageLoader.imageList[name].src = url;
                     }));
+                }
+
+                calculateMips(imageName){
+                    let outputImg = {};
+                    outputImg[this.imageList[imageName].width] = this.imageList[imageName];
+                    
+                    let mipSizes = [
+                        1.5,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8
+                    ]
+                    for(var i = 0; i < mipSizes.length; i++){ 
+                        let divisor = mipSizes[i];
+                        let renderCanvas = new OffscreenCanvas(Math.floor(this.imageList[imageName].width/divisor),Math.floor(this.imageList[imageName].height/divisor));
+                        let ctx = renderCanvas.getContext("2d");
+                        ctx.imageSmoothingQuality = "high";
+                        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                        ctx.save();
+                        ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
+                        ctx.rotate((360/frames) * i *  Math.PI/180);
+                        ctx.translate(-1* ctx.canvas.width/2, -1* ctx.canvas.height/2);
+                        ctx.drawImage(this.imageList[imageName], 0,0,ctx.canvas.width,ctx.canvas.height);
+                        ctx.restore();
+                        outputImg[ctx.canvas.width] = renderCanvas.transferToImageBitmap();
+                    }
+                    this.mipsList[imageName] = outputImg;
+                }
+
+                getMip(imageName, width){
+                    if(this.mipsList.hasOwnProperty(imageName)){
+                        let closestDistance = Infinity;
+                        let closestKey;
+                        for(const res in this.mipsList[imageName]){
+                            let diff = Math.abs(res - width);
+                            if(diff < closestDistance){
+                                closestDistance = diff;
+                                closestKey = res;
+                            }
+                        }
+                        return this.mipsList[imageName][closestKey];
+                    }else{
+                        return this.imageList[imageName];
+                    }
                 }
 
                 onload(callback){
@@ -198,6 +247,8 @@
                 }
                 return outputImg;
             }
+
+            
 
             class SoundLoader{
                 promiseList = [];
@@ -253,6 +304,16 @@
                             texture_y:'wall'+textureY
                         };
                     }
+                }
+
+                if(levelCounter == 0){
+                    dataSquares[5][12] = {
+                        seen:false,
+                        blocked:false,
+                        blockedBy:null,
+                        texture_x:'wall1',
+                        texture_y:'wall_danger'
+                    };
                 }
 
             }
@@ -429,6 +490,8 @@
                 active = true;wd
                 seen = false;
                 delete = false;
+                useMips = false;
+                imageName = '';
 
                 constructor(ctx, image, xPos, yPos, zPos, width, height){
                     this.ctx = ctx;
@@ -555,6 +618,8 @@
                                 let linesegment = (segment + this.width/2)/this.width
                                 this.seen = true;
 
+                                
+
                                 if(this.direction){ //for wall like sprites
                                     let intersect = 0;
                                     let testPos;
@@ -572,6 +637,10 @@
                                         playerDistance = Math.sqrt(Math.pow(intersect, 2) + Math.pow(yRelative, 2));
                                     }
                                     if(Math.abs(intersect - testPos) <= 1){
+                                        if(this.useMips && this.imageName){
+                                            let drawnHeight =  Math.floor(256 * (1/playerDistance));
+                                            this.image = textureLoader.getMip(this.imageName, drawnHeight);
+                                        }
                                         spriteRenders.push(
                                             {
                                                 pixel:pixel,
@@ -583,6 +652,10 @@
                                     }
 
                                 }else{ //for always facing player sprites
+                                    if(this.useMips && this.imageName){
+                                        let drawnHeight =  Math.floor(256 * (1/playerDistance));
+                                        this.image = textureLoader.getMip(this.imageName, drawnHeight);
+                                    }
                                     spriteRenders.push(
                                         {
                                             pixel:pixel,
@@ -605,6 +678,8 @@
                 lastSound = 0;
                 constructor(ctx, image, xPos, yPos, zPos, width, height){
                     super(ctx, image, xPos, yPos, zPos, width, height);
+                    this.useMips = true;
+                    this.imageName = 'flower';
                 }
 
                 isVisible(player, rayIntersections){
@@ -782,6 +857,7 @@
                 effectActive = false;
                 health = 100;
                 defeatActive = false;
+                lastHeal = 0;
 
                 constructor(ctx, faceImg, blink, closed, blush){
                     this.ctx = ctx;
@@ -826,14 +902,14 @@
                         this.oldScore = strawbCount;
                         this.setBlush();
                         soundLoader.soundList['bleat'].play();
-                        this.heal(20);
+                        this.heal(5);
                         if(sceneScore == sceneGoal){
                             teleporter.active = true;
                         }
                     }
                 }
                 hit(){
-                    this.health = Math.max(0, this.health - 10);
+                    this.health = Math.max(0, this.health - 20);
                     if(this.health == 0){
                         if(!userInterface.defeatActive) userInterface.defeat();
                     }else{
@@ -844,6 +920,7 @@
                 }
                 heal(points){
                     this.health = Math.min(100, this.health + points);
+                    this.lastHeal = performance.now();
                 }
 
                 setBlinking(){
@@ -1019,7 +1096,15 @@
                     this._drawInsetBox(this.faceSize, 0 - scoreBox - scoreBox, scoreBox, 25);
                     this.ctx.font = "12px sans-serif";
                     this.ctx.textAlign = "center";
-                    this.ctx.fillStyle = "white";
+                    if(this.lastHeal + 1000 > performance.now()){
+                        this.ctx.fillStyle = "lime";
+                    }else if(this.health < 30){
+                        this.ctx.fillStyle = "red";
+                    }else if(this.health <= 60){
+                        this.ctx.fillStyle = "gold";
+                    }else{
+                        this.ctx.fillStyle = "white";
+                    }
                     this.ctx.fillText(this.health,this.faceSize + this.borderWidth + this.insetWidth + (scoreBox - 2*(this.borderWidth + this.insetWidth))/2,this.ctx.canvas.height - this.faceSize - 8);
 
                     this.ctx.restore();
@@ -1118,6 +1203,8 @@
             class StrawberrySprite extends Sprite{
                 constructor(ctx, image, xPos, yPos, zPos, width, height){
                     super(ctx, image, xPos, yPos, zPos, width, height);
+                    this.useMips = true;
+                    this.imageName = 'strawb';
                 }
 
                 isVisible(player, rayIntersections){
@@ -1346,10 +1433,21 @@
                     this.hopProgress = 0;
                     this.speed = 1;
                     this.isMoving = false;
+                    this.hasHeal = true;
+                    this.useMips = true;
+                    this.imageName = 'bunny';
                 }
 
                 isVisible(player, rayIntersections){
                     super.isVisible(player, rayIntersections);
+                    let yRelative = ( this.yPos - player.yPos)/gridSize;
+                    let xRelative = ( this.xPos - player.xPos)/gridSize;
+                    let playerDistance = Math.sqrt(Math.pow(xRelative, 2) + Math.pow(yRelative, 2));
+                    if(playerDistance < 0.3 && this.hasHeal && userInterface.health < 100){
+                        userInterface.heal(40);
+                        soundLoader.soundList['heal'].play();
+                        this.hasHeal = false;
+                    }
                     
                 }
                 _chooseDirection(){
@@ -1403,9 +1501,11 @@
                     let cross = this.directionX * py - this.directionY * px;
                      
                     if(dot < 0){
-                        this.image = textureLoader.imageList['bunny']
+                        this.image = textureLoader.imageList['bunny'];
+                        this.imageName = 'bunny';
                     }else{
-                        this.image = textureLoader.imageList['bunny_back']
+                        this.image = textureLoader.imageList['bunny_back'];
+                        this.imageName = 'bunny_back';
                     }
 
                     if(!this.active) return true;
@@ -1425,6 +1525,20 @@
                 constructor(ctx, image, xPos, yPos, zPos, width, height, type){
                     super(ctx, image, xPos, yPos, zPos, width, height);
                     this.type = type;
+                    this.useMips = true;
+                    this.imageName = 'key';
+                    switch(type){
+                        case 1:
+                            this.imageName = 'key';
+                        break;
+                        case 2:
+                            this.imageName = 'key_silver';
+                        break;
+                        case 3:
+                            this.imageName = 'key_bronze';
+                        break;
+                    }
+                    
                 }
 
                 isVisible(player, rayIntersections){
@@ -1579,6 +1693,21 @@
                     this.openImg = openImg;
                     this.closedImg = closedImg;
                     this.type = type;
+                    this.useMips = true;
+                    switch(type){
+                        case 1:
+                            this.imageName = 'door';
+                        break;
+                        case 2:
+                            this.imageName = 'door_silver';
+                        break;
+                        case 3:
+                            this.imageName = 'door_bronze';
+                        break;
+                    }
+                    
+
+
                     //block own square
                     dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = true;
                     dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blockedBy = this;
@@ -1596,6 +1725,7 @@
                     this.open = true;
                     dataSquares[Math.floor(this.xPos/gridSize)][Math.floor(this.yPos/gridSize)].blocked = false;
                     this.image = this.openImg;
+                    this.useMips = false;
                 }
 
                 setClosed(){
@@ -1923,7 +2053,8 @@
                 }
                 return 0;
             }
-
+            
+            /** @param {CanvasRenderingContext2D} ctxCamera*/
             function drawCamera(ctxCamera, rayIntersections){
                 ctxCamera.save();
                 let skygrad = ctxCamera.createLinearGradient(0, ctxCamera.canvas.height/4, 0, ctxCamera.canvas.height/2);
@@ -1949,9 +2080,12 @@
                 for(var i = 0; i < resolution; i++){
                     let width = Math.floor(ctxCamera.canvas.width/resolution);
                     if(rayIntersections[i] && rayIntersections[i].intersects){
-                        let height =  256 * (1/rayIntersections[i].distance);
+                        let height =  Math.floor(256 * (1/rayIntersections[i].distance));
                         let yOffset = (ctxCamera.canvas.height - height)/2;
-                        ctxCamera.drawImage(textureLoader.imageList[rayIntersections[i].texture], rayIntersections[i].textureCoordinate, 0, 1, textureLoader.imageList[rayIntersections[i].texture].height, i*width, yOffset, width, height)
+                        ctxCamera.imageSmoothingQuality = "high";
+
+                        let mip = textureLoader.getMip(rayIntersections[i].texture, height);
+                        ctxCamera.drawImage(mip, Math.floor(rayIntersections[i].textureCoordinate * (mip.width / textureLoader.imageList[rayIntersections[i].texture].width)), 0, 1, mip.height, i*width, yOffset, width, height)
                     }
                 }
 
@@ -2108,6 +2242,9 @@
                     if(intersect.tileFound){
                         let intersectionX = startCellX + (intersect.dx * intersect.rayLength);
                         let intersectionY = startCellY + (intersect.dy * intersect.rayLength);
+                        let gridX = Math.floor(intersectionX);
+                        let gridY = Math.floor(intersectionY);
+
                         ctx.save()
                         ctx.fillStyle = "yellow";
                         ctx.beginPath();
@@ -2115,21 +2252,22 @@
                         ctx.fill();
                         ctx.restore();
 
-                        let textureCoordinate;
-                        if(intersect.side == "y"){
-                            textureCoordinate = Math.floor(32*(intersectionX - Math.floor(intersectionX)));
-                        }else{
-                            textureCoordinate = Math.floor(32*(intersectionY - Math.floor(intersectionY)));
-                        }
 
                         
-                        let gridX = Math.floor(intersectionX);
-                        let gridY = Math.floor(intersectionY);
                         if(intersect.side == "y" &&  intersectionY < startCellY && gridY > 0){
                             gridY -= 1;
                         }
                         if(intersect.side == "x" &&  intersectionX < startCellX && gridX > 0){
                             gridX -= 1;
+                        }
+
+                        let imgWidth = textureLoader.imageList[dataSquares[gridX][gridY]['texture_'+intersect.side]].width;
+
+                        let textureCoordinate;
+                        if(intersect.side == "y"){
+                            textureCoordinate = Math.floor(imgWidth*(intersectionX - Math.floor(intersectionX)));
+                        }else{
+                            textureCoordinate = Math.floor(imgWidth*(intersectionY - Math.floor(intersectionY)));
                         }
                         dataSquares[gridX][gridY].seen = true;
                         
@@ -2507,7 +2645,6 @@
                     }
                     
                 }
-
             }
 
             let select = document.getElementById("map_select")
@@ -2540,7 +2677,7 @@
             soundLoader.load("sound/hit.mp3", "hit");
             soundLoader.load("sound/shoot.mp3", "shoot");
             soundLoader.load("sound/unlock.mp3", "unlock");
-            
+            soundLoader.load("sound/heal.mp3", "heal");
             soundLoader.load("sound/key.mp3", "key");
             
             soundLoader.load("sound/bush.mp3", "bush");
@@ -2580,6 +2717,7 @@
                 textureLoader.load("img/wall2.png", 'wall2');
                 textureLoader.load("img/wall3.png", 'wall3');
                 textureLoader.load("img/wall4.png", 'wall4');
+                textureLoader.load("img/wall_danger.png", 'wall_danger');
                 textureLoader.load("img/shoot_1.png", 'shoot_1');
                 textureLoader.load("img/shoot_2.png", 'shoot_2');
                 textureLoader.load("img/shoot_3.png", 'shoot_3');
@@ -2609,6 +2747,22 @@
                     let faceBlink = textureLoader.imageList['face-blink'];
                     let faceClose = textureLoader.imageList['face-close'];
                     let faceBlush = textureLoader.imageList['face-blush'];
+                    textureLoader.calculateMips('wall_danger');
+                    textureLoader.calculateMips('wall1');
+                    textureLoader.calculateMips('wall2');
+                    textureLoader.calculateMips('wall3');
+                    textureLoader.calculateMips('wall4');
+
+                    textureLoader.calculateMips('door');
+                    textureLoader.calculateMips('door_silver');
+                    textureLoader.calculateMips('door_bronze');
+
+                    textureLoader.calculateMips('strawb');
+                    textureLoader.calculateMips('flower');
+
+                    textureLoader.calculateMips('bunny');
+                    textureLoader.calculateMips('bunny_back');
+
                     bulletImageRotation = precalculateImageRotation(textureLoader.imageList['bullet'], [textureLoader.imageList['bullet_glow']], 32, 64, 64);
                     netImageRotation = precalculateImageRotation(textureLoader.imageList['net'], [], 32, 128, 128);
                     userInterface = new UserInterface(ctxCamera,  faceImg, faceBlink, faceClose, faceBlush);
