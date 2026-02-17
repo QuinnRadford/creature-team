@@ -828,6 +828,7 @@
                 }
                 buttonAction(){
                     strawbCount = startingStrawbs;
+                    userInterface.health = 100;
                     userInterface.sceneChange(0, player, levelCounter);
                     soundLoader.soundList['defeat'].pause();
                     defaultSoundLevels();
@@ -855,7 +856,7 @@
                 blushStart = 0;
                 effectStart = 0;
                 effectActive = false;
-                health = 100;
+                health = 40;
                 defeatActive = false;
                 lastHeal = 0;
 
