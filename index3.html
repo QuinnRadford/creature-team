@@ -2638,7 +2638,7 @@
                 for(var i = 0; i < strawbSpawnCount; i++){
                     let thisSpriteX = (Math.round(Math.random() * (ctx.canvas.width - 2*gridSize))) + gridSize;
                     let thisSpriteY = (Math.round(Math.random() * (ctx.canvas.height - 2*gridSize))) + gridSize;
-                    if(!gridSquares[Math.floor(thisSpriteX/gridSize)][Math.floor(thisSpriteY/gridSize)]){
+                    if(!gridSquares[Math.floor(thisSpriteX/gridSize)][Math.floor(thisSpriteY/gridSize)] && !dataSquares[Math.floor(thisSpriteX/gridSize)][Math.floor(thisSpriteY/gridSize)].blocked){
                         spriteList.push(createStrawb(thisSpriteX,thisSpriteY));
                     }else{
                         i--; //try again
